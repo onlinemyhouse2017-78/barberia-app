@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberApp - Barbería VIP & Club de Puntos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: {
+                            400: '#f6d365',
+                            500: '#d4af37',
+                            600: '#aa7c11',
+                            700: '#855e0c',
+                        },
+                        onyx: {
+                            900: '#0b0c10',
+                            800: '#12141c',
+                            700: '#1b1e2b',
+                            600: '#262a3d',
+                        }
+                    },
+                    fontFamily: {
+                        title: ['Outfit', 'sans-serif'],
+                        sans: ['DM Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+    :root {
+      --gold-gradient: linear-gradient(135deg, #FFE17D 0%, #F2C94C 45%, #B38218 100%);
+      --dark-card: rgba(22, 29, 38, 0.8);
+      --border-glow: rgba(242, 201, 76, 0.35);
+      --soft-overlay: rgba(12, 17, 26, 0.42);
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #E2E8F0;
+    font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      /* Dynamic Barber Pole Background inspired by the reference image */
+      background: repeating-linear-gradient(
+        -45deg,
+        #d32f2f 0px,
+        #d32f2f 40px,
+        #ffffff 40px,
+        #ffffff 80px,
+        #1976d2 80px,
+        #1976d2 120px,
+        #ffffff 120px,
+        #ffffff 160px
+      );
+      background-size: 226px 226px;
+      animation: barberPoleBg 12s linear infinite;
+      background-attachment: fixed;
+    }
+
+    @keyframes barberPoleBg {
+      0% {
+        background-position: 0 0;
+      }
+      100% {
+        background-position: 226px 0;
+      }
+    }
+
+    /* Overlay container to ensure dark luxury glass readability on top of active background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.42) 0%, rgba(15, 23, 42, 0.7) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .gold-text {
+      background: var(--gold-gradient);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gold-border {
+      border-color: rgba(242, 201, 76, 0.3);
+    }
+
+    .gold-btn {
+      background: var(--gold-gradient);
+      color: #0A0D12;
+      font-weight: 800;
+      box-shadow: 0 4px 20px rgba(242, 201, 76, 0.35);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .gold-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(242, 201, 76, 0.5);
+      filter: brightness(1.1);
+    }
+
+    .glass-panel {
+      background: rgba(18, 24, 36, 0.76);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(242, 201, 76, 0.25);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+    }
+
+    .glass-card {
+      background: rgba(23, 31, 43, 0.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.3s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(242, 201, 76, 0.5);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    }
+
+    .auth-role-btn {
+            border: 1px solid #d7dce2;
+            background: #f4f6f8;
+            color: #374151;
+      padding: 0.6rem 0.9rem;
+      border-radius: 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+            letter-spacing: 0;
+      transition: all 0.2s ease;
+    }
+
+    .auth-role-btn.active {
+      background: linear-gradient(135deg, #FFE17D 0%, #F2C94C 45%, #B38218 100%);
+            color: #171717;
+            border-color: #c99b22;
+            box-shadow: 0 4px 12px rgba(176, 130, 24, 0.22);
+        }
+
+        .barber-lamp-button {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+        }
+
+        button {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:active {
+            filter: brightness(1.28);
+        }
+
+        button:focus-visible {
+            outline: 2px solid #ffe17d;
+            outline-offset: 3px;
+            box-shadow: 0 0 0 4px rgba(246, 211, 101, 0.24), 0 0 18px rgba(246, 211, 101, 0.72);
+        }
+
+        button.button-ignited {
+            animation: button-ignition 520ms ease-out;
+        }
+
+        @keyframes button-ignition {
+            0% {
+                filter: brightness(1);
+                box-shadow: 0 0 0 rgba(246, 211, 101, 0);
+            }
+            28% {
+                filter: brightness(1.48) saturate(1.2);
+                box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28), 0 0 24px 7px rgba(246, 211, 101, 0.82);
+            }
+            100% {
+                filter: brightness(1);
+                box-shadow: 0 0 0 rgba(246, 211, 101, 0);
+            }
+        }
+
+        .barber-lamp-button::before {
+            content: '';
+            position: absolute;
+            inset: 2px auto 2px 2px;
+            width: 8px;
+            border-radius: 999px;
+            background: repeating-linear-gradient(135deg, #bd2635 0 6px, #fff 6px 12px, #1769aa 12px 18px, #fff 18px 24px);
+            background-size: 100% 24px;
+            animation: barber-lamp-roll 1.8s linear infinite;
+            box-shadow: 0 0 8px rgba(189, 38, 53, 0.22);
+            pointer-events: none;
+        }
+
+        @keyframes barber-lamp-roll {
+            to { background-position-y: 24px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .barber-lamp-button::before {
+                animation: none;
+            }
+
+            button.button-ignited {
+                animation: none;
+                filter: brightness(1.3);
+                box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28), 0 0 20px 5px rgba(246, 211, 101, 0.82);
+            }
+        }
+
+        .auth-modal-card {
+            background: linear-gradient(135deg, rgba(11, 14, 18, 0.76), rgba(11, 14, 18, 0.9)), url('https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=85') center / cover;
+            border: 1px solid rgba(212, 175, 55, 0.65);
+            box-shadow: 0 28px 80px rgba(8, 12, 18, 0.58);
+            color: #f8fafc;
+        }
+
+        #auth-modal .auth-modal-card:hover {
+            transform: none;
+            border-color: rgba(212, 175, 55, 0.8);
+            box-shadow: 0 28px 80px rgba(8, 12, 18, 0.58);
+        }
+
+        .auth-input {
+            background: #fff;
+            border: 1px solid #cbd2da;
+            color: #111827;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .auth-input::placeholder {
+            color: #8993a1;
+        }
+
+        .auth-input:focus {
+            border-color: #b38218;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18);
+        }
+
+        .auth-label {
+            color: #ffe17d;
+        }
+
+        .auth-secondary-button {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.36);
+            color: #fff;
+        }
+
+        .auth-secondary-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .auth-divider-label {
+            background: rgba(11, 14, 18, 0.94);
+            color: #e5e7eb;
+    }
+
+    .barber-panel-badge {
+      background: rgba(242, 201, 76, 0.12);
+      border: 1px solid rgba(242, 201, 76, 0.25);
+      color: #f5d972;
+    }
+
+    /* Ambient Barber Floating Elements */
+    .floating-icon {
+      position: absolute;
+      opacity: 0.15;
+      pointer-events: none;
+      animation: float 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-25px) rotate(10deg); }
+      100% { transform: translateY(10px) rotate(-10deg); }
+    }
+
+    /* Toast Notification */
+    #toast {
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    }
+
+        .haircut-book {
+            background: linear-gradient(135deg, rgba(246, 211, 101, 0.10), rgba(17, 24, 39, 0.92) 38%, rgba(17, 24, 39, 0.98));
+            border: 1px solid rgba(242, 201, 76, 0.28);
+            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.32);
+        }
+
+        .haircut-book-viewport {
+            overflow: hidden;
+            border-radius: 0.9rem;
+            touch-action: pan-y;
+        }
+
+        .haircut-book-track {
+            display: flex;
+            transition: transform 560ms cubic-bezier(0.22, 0.75, 0.25, 1);
+            will-change: transform;
+        }
+
+        .haircut-book-page {
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+            flex: 0 0 100%;
+            min-height: 370px;
+            background: rgba(11, 12, 16, 0.78);
+        }
+
+        .haircut-book-photo {
+            min-height: 370px;
+            overflow: hidden;
+            background: #20252d;
+        }
+
+        .haircut-book-photo img {
+            width: 100%;
+            height: 100%;
+            min-height: inherit;
+            object-fit: cover;
+            display: block;
+            transition: transform 700ms ease;
+        }
+
+        .haircut-book-page:hover .haircut-book-photo img {
+            transform: scale(1.035);
+        }
+
+        .haircut-book-copy {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(1.25rem, 4vw, 2.5rem);
+            border-left: 1px solid rgba(242, 201, 76, 0.18);
+        }
+
+        @media (max-width: 640px) {
+            .haircut-book-page {
+                grid-template-columns: minmax(0, 1fr);
+                min-height: 0;
+            }
+
+            .haircut-book-photo {
+                height: 250px;
+                min-height: 250px;
+            }
+
+            .haircut-book-photo img {
+                min-height: 250px;
+            }
+
+            .haircut-book-copy {
+                min-height: 170px;
+                border-left: 0;
+                border-top: 1px solid rgba(242, 201, 76, 0.18);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .haircut-book-track,
+            .haircut-book-photo img {
+                transition-duration: 0.01ms;
+            }
+        }
+  </style>
+</head>
+<body class="p-3 md:p-6 text-slate-100 flex flex-col items-center justify-center min-h-screen relative overflow-x-hidden">
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-gold-500 selection:text-black">
+
+    <!-- Background Floating Decorative Barber Tools -->
+    <i class="fa-solid fa-scissors floating-tool text-8xl text-gold-400 top-16 left-10" style="animation-delay: 0s;"></i>
+    <i class="fa-solid fa-droplet floating-tool text-9xl text-gold-400 top-1/3 right-10" style="animation-delay: 2s;"></i>
+    <i class="fa-solid fa-comb floating-tool text-8xl text-gold-400 bottom-1/4 left-1/4" style="animation-delay: 4s;"></i>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app" class="max-w-4xl mx-auto w-full p-4 sm:p-6 z-10 flex-1 flex flex-col">
+
+        <!-- HEADER SECTION -->
+        <header class="glass-card rounded-2xl p-4 sm:p-6 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-gold-500/20 shadow-xl relative overflow-hidden">
+            <div class="flex items-center gap-4">
+                <!-- Farol de Barbero Animado -->
+                <div class="flex flex-col items-center">
+                    <div class="w-10 h-3 bg-gradient-to-r from-gold-600 via-gold-400 to-gold-600 rounded-t-md shadow-md"></div>
+                    <div class="barber-pole-container shadow-lg">
+                        <div class="barber-pole-stripes"></div>
+                    </div>
+                    <div class="w-10 h-3 bg-gradient-to-r from-gold-600 via-gold-400 to-gold-600 rounded-b-md shadow-md"></div>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-title text-2xl sm:text-3xl font-bold tracking-wider gold-gradient-text">BARBERIA VIP</h1>
+                        <i class="fa-solid fa-scissors animated-scissors text-gold-400 text-lg"></i>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-400 flex items-center gap-1 mt-0.5">
+                        <span>Estilo, Elegancia & Cuidado Personal</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- User Auth Bar / Guest badge -->
+            <div id="user-profile-header" class="flex items-center gap-3 bg-onyx-800/80 px-4 py-2 rounded-xl border border-gold-500/20">
+                <!-- Dynamic Content JS -->
+            </div>
+        </header>
+
+        <!-- NAVIGATION BAR -->
+        <nav class="glass-card rounded-xl p-1.5 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-1.5 border border-gold-500/20">
+            <button onclick="switchTab('tab-home')" id="btn-tab-home" class="nav-tab barber-lamp-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all duration-200">
+                <i class="fa-solid fa-house text-gold-400"></i>
+                <span>Inicio / Citas</span>
+            </button>
+            <button onclick="switchTab('tab-book')" id="btn-tab-book" class="nav-tab barber-lamp-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all duration-200">
+                <i class="fa-solid fa-calendar-plus text-gold-400"></i>
+                <span>Agendar Cita</span>
+            </button>
+            <button onclick="switchTab('tab-points')" id="btn-tab-points" class="nav-tab barber-lamp-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all duration-200">
+                <i class="fa-solid fa-crown text-gold-400"></i>
+                <span>Puntos & Club</span>
+            </button>
+            <button onclick="switchTab('tab-history')" id="btn-tab-history" class="nav-tab barber-lamp-button flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all duration-200">
+                <i class="fa-solid fa-clock-rotate-left text-gold-400"></i>
+                <span>Historial</span>
+            </button>
+        </nav>
+
+        <!-- TAB CONTENT CONTAINER -->
+        <main class="flex-1">
+            <div id="barber-dashboard-view" class="hidden space-y-6">
+                <div class="glass-card rounded-2xl p-6 border border-gold-500/20">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold">Panel del barbero</div>
+                            <h2 class="font-title text-3xl font-bold text-white mt-1">Agenda VIP</h2>
+                        </div>
+                        <span class="barber-panel-badge text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">En vivo</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-onyx-900/70 rounded-xl p-3 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Total</div>
+                            <div id="barber-dashboard-total" class="text-2xl font-bold text-white mt-1">0</div>
+                        </div>
+                        <div class="bg-onyx-900/70 rounded-xl p-3 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Pendientes</div>
+                            <div id="barber-dashboard-pending" class="text-2xl font-bold text-gold-400 mt-1">0</div>
+                        </div>
+                        <div class="bg-onyx-900/70 rounded-xl p-3 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Atendidas</div>
+                            <div id="barber-dashboard-done" class="text-2xl font-bold text-emerald-400 mt-1">0</div>
+                        </div>
+                        <div class="bg-onyx-900/70 rounded-xl p-3 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Cliente VIP</div>
+                            <div id="barber-dashboard-client" class="text-2xl font-bold text-white mt-1">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 border border-gold-500/20">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-title text-xl font-bold text-white">Citas del día</h3>
+                        <span class="text-[10px] text-gray-400">Actualización en tiempo real</span>
+                    </div>
+                    <div id="barber-dashboard-list" class="space-y-3"></div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 border border-gold-500/20">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-title text-xl font-bold text-white">Información general del trabajo</h3>
+                        <span class="text-[10px] text-gray-400">Resumen del servicio</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-onyx-900/70 rounded-xl p-4 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Ingresos estimados</div>
+                            <div id="barber-total-income" class="text-2xl font-bold text-gold-400 mt-1">$0</div>
+                        </div>
+                        <div class="bg-onyx-900/70 rounded-xl p-4 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Valuación recibida</div>
+                            <div id="barber-avg-valuation" class="text-2xl font-bold text-emerald-400 mt-1">0.0/5</div>
+                        </div>
+                        <div class="bg-onyx-900/70 rounded-xl p-4 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Puntaje del cliente</div>
+                            <div id="barber-client-score" class="text-2xl font-bold text-white mt-1">0/100</div>
+                        </div>
+                        <div class="bg-onyx-900/70 rounded-xl p-4 border border-gold-500/20">
+                            <div class="text-[10px] uppercase text-gray-400">Estado general</div>
+                            <div id="barber-work-status" class="text-lg font-bold text-white mt-1">Sin trabajo</div>
+                        </div>
+                    </div>
+
+                    <div id="barber-work-detail" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div id="client-shell" class="grid grid-cols-1 xl:grid-cols-[1.5fr_0.9fr] gap-6 items-start">
+                <div class="space-y-6">
+                    <!-- TAB 1: INICIO Y CITAS ACTIVAS -->
+                    <section id="tab-home" class="tab-content hidden space-y-6">
+                        <!-- Loyalty Header Summary Widget -->
+                        <div class="glass-card rounded-2xl p-6 relative overflow-hidden bg-gradient-to-r from-onyx-800 via-onyx-700 to-onyx-800">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 z-10 relative">
+                                <div>
+                                    <span class="text-xs uppercase tracking-widest text-gold-400 font-bold">Tu Nivel De Cliente VIP</span>
+                                    <h2 class="text-2xl font-title font-bold text-white mt-1 flex items-center gap-2">
+                                        <i class="fa-solid fa-gem text-gold-400"></i>
+                                        <span id="user-pts-display">0</span> Puntos Acumulados
+                                    </h2>
+                                    <p class="text-xs text-gray-400 mt-1">Gana 10 pts por cada corte o reserva completada</p>
+                                </div>
+                                <button onclick="switchTab('tab-book')" class="barber-lamp-button w-full sm:w-auto bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-bold px-5 py-3 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-scissors"></i>
+                                    <span>Agendar Nuevo Corte</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Repeat Last Cut Quick Button (Feature maintained) -->
+                        <div id="repeat-cut-container" class="glass-card rounded-2xl p-5 border border-gold-500/30 bg-onyx-800/90 hidden">
+                            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-full bg-gold-500/10 border border-gold-500/40 flex items-center justify-center text-gold-400 text-xl">
+                                        <i class="fa-solid fa-rotate-right animated-scissors"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-white text-base">¿Deseas repetir tu último servicio?</h3>
+                                        <p id="last-cut-info" class="text-xs text-gray-400 mt-0.5">Cargando último servicio...</p>
+                                    </div>
+                                </div>
+                                <button onclick="repeatLastCut()" class="barber-lamp-button w-full sm:w-auto px-4 py-2.5 bg-gold-500/20 hover:bg-gold-500/30 border border-gold-500/50 text-gold-400 hover:text-gold-300 font-semibold rounded-xl transition text-sm flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-bolt"></i>
+                                    <span>Repetir Corte (+5 Pts Bonus)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Next Upcoming Appointment -->
+                        <div class="glass-card rounded-2xl p-6">
+                            <h3 class="font-title text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-check text-gold-400"></i>
+                                <span>Próxima Cita Confirmada</span>
+                            </h3>
+                            <div id="upcoming-appointment-card">
+                                <!-- JS Dynamic Insert -->
+                            </div>
+                        </div>
+
+                        <section class="haircut-book rounded-2xl p-4 sm:p-6" aria-labelledby="haircut-book-title">
+                            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+                                <div>
+                                    <span class="text-[10px] uppercase tracking-[0.2em] font-bold text-gold-400">Inspiración de la barbería</span>
+                                    <h3 id="haircut-book-title" class="font-title text-xl sm:text-2xl font-bold text-white mt-1">Galería de cortes</h3>
+                                </div>
+                                <div class="flex items-center justify-between sm:justify-end gap-3">
+                                    <span id="haircut-book-page-number" class="text-xs font-semibold text-gray-300" aria-live="polite">01 / 04</span>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="changeHaircutPage(-1)" aria-label="Página anterior" title="Página anterior" class="w-10 h-10 rounded-full border border-gold-500/30 bg-onyx-900/70 text-gold-300 hover:bg-gold-500 hover:text-black transition">
+                                            <i class="fa-solid fa-arrow-left"></i>
+                                        </button>
+                                        <button type="button" onclick="changeHaircutPage(1)" aria-label="Página siguiente" title="Página siguiente" class="w-10 h-10 rounded-full border border-gold-500/30 bg-onyx-900/70 text-gold-300 hover:bg-gold-500 hover:text-black transition">
+                                            <i class="fa-solid fa-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="haircut-book-viewport" class="haircut-book-viewport" tabindex="0" aria-label="Galería deslizable de estilos de corte">
+                                <div id="haircut-book-track" class="haircut-book-track">
+                                    <article class="haircut-book-page" aria-label="Estilo 1 de 4">
+                                        <div class="haircut-book-photo">
+                                            <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=85" alt="Barbero trabajando en un corte clásico" loading="lazy">
+                                        </div>
+                                        <div class="haircut-book-copy">
+                                            <span class="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold">01 · Clásico</span>
+                                            <h4 class="font-title text-2xl font-bold text-white mt-2">Degradado limpio</h4>
+                                            <p class="text-sm text-gray-300 leading-relaxed mt-3">Laterales prolijos y textura natural para un estilo versátil, pensado para todos los días.</p>
+                                        </div>
+                                    </article>
+                                    <article class="haircut-book-page" aria-label="Estilo 2 de 4">
+                                        <div class="haircut-book-photo">
+                                            <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=85" alt="Detalle de un corte degradado realizado en barbería" loading="lazy">
+                                        </div>
+                                        <div class="haircut-book-copy">
+                                            <span class="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold">02 · Fade</span>
+                                            <h4 class="font-title text-2xl font-bold text-white mt-2">Fade con textura</h4>
+                                            <p class="text-sm text-gray-300 leading-relaxed mt-3">Un degradado progresivo que combina definición en los laterales con movimiento en la parte superior.</p>
+                                        </div>
+                                    </article>
+                                    <article class="haircut-book-page" aria-label="Estilo 3 de 4">
+                                        <div class="haircut-book-photo">
+                                            <img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85" alt="Herramientas y acabado de un corte de barbería" loading="lazy">
+                                        </div>
+                                        <div class="haircut-book-copy">
+                                            <span class="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold">03 · Ejecutivo</span>
+                                            <h4 class="font-title text-2xl font-bold text-white mt-2">Corte ejecutivo</h4>
+                                            <p class="text-sm text-gray-300 leading-relaxed mt-3">Líneas definidas y un acabado sobrio que mantiene la forma entre visitas.</p>
+                                        </div>
+                                    </article>
+                                    <article class="haircut-book-page" aria-label="Estilo 4 de 4">
+                                        <div class="haircut-book-photo">
+                                            <img src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1200&q=85" alt="Estilo moderno de corte y arreglo de barba" loading="lazy">
+                                        </div>
+                                        <div class="haircut-book-copy">
+                                            <span class="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold">04 · Corte y barba</span>
+                                            <h4 class="font-title text-2xl font-bold text-white mt-2">Perfilado completo</h4>
+                                            <p class="text-sm text-gray-300 leading-relaxed mt-3">Corte y barba equilibrados en un mismo look, con contornos definidos y acabado cuidado.</p>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-center gap-2 mt-4" role="group" aria-label="Seleccionar página de galería">
+                                <button type="button" onclick="goToHaircutPage(0)" aria-label="Ir a página 1" class="haircut-book-dot w-2.5 h-2.5 rounded-full bg-gold-400 transition-all" aria-current="true"></button>
+                                <button type="button" onclick="goToHaircutPage(1)" aria-label="Ir a página 2" class="haircut-book-dot w-2.5 h-2.5 rounded-full bg-white/30 transition-all"></button>
+                                <button type="button" onclick="goToHaircutPage(2)" aria-label="Ir a página 3" class="haircut-book-dot w-2.5 h-2.5 rounded-full bg-white/30 transition-all"></button>
+                                <button type="button" onclick="goToHaircutPage(3)" aria-label="Ir a página 4" class="haircut-book-dot w-2.5 h-2.5 rounded-full bg-white/30 transition-all"></button>
+                            </div>
+                        </section>
+
+                        <!-- Animated Tools Showcase Banner -->
+                        <div class="glass-card rounded-2xl p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-gold-500/10">
+                            <div class="p-3 bg-onyx-800/50 rounded-xl border border-onyx-600/30">
+                                <i class="fa-solid fa-scissors animated-scissors text-2xl text-gold-400 mb-2"></i>
+                                <h4 class="text-xs font-bold uppercase text-gray-300">Corte & Estilo</h4>
+                            </div>
+                            <div class="p-3 bg-onyx-800/50 rounded-xl border border-onyx-600/30">
+                                <i class="fa-solid fa-disease animated-clipper text-2xl text-gold-400 mb-2"></i>
+                                <h4 class="text-xs font-bold uppercase text-gray-300">Perfilado Barba</h4>
+                            </div>
+                            <div class="p-3 bg-onyx-800/50 rounded-xl border border-onyx-600/30">
+                                <i class="fa-solid fa-spray-can text-2xl text-gold-400 mb-2"></i>
+                                <h4 class="text-xs font-bold uppercase text-gray-300">Tratamiento VIP</h4>
+                            </div>
+                            <div class="p-3 bg-onyx-800/50 rounded-xl border border-onyx-600/30">
+                                <i class="fa-solid fa-award text-2xl text-gold-400 mb-2"></i>
+                                <h4 class="text-xs font-bold uppercase text-gray-300">Barberos Master</h4>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 2: AGENDAR CITA -->
+                    <section id="tab-book" class="tab-content hidden">
+                        <div class="glass-card rounded-2xl p-6 max-w-2xl mx-auto border-gold-500/30">
+                            <h2 class="font-title text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-days text-gold-400"></i>
+                                <span>Reserva Tu Turno</span>
+                            </h2>
+                            <p class="text-xs text-gray-400 mb-6">Selecciona el servicio, barbero de preferencia, fecha y hora.</p>
+
+                            <form id="booking-form" onsubmit="handleBooking(event)" class="space-y-5">
+                                <!-- Servicio -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gold-400 uppercase tracking-wider mb-2">1. Selecciona Servicio</label>
+                                    <select id="book-service" required onchange="updateBookingCostPreview()" class="w-full bg-onyx-900 border border-gold-500/30 rounded-xl p-3 text-white focus:outline-none focus:border-gold-400 text-sm">
+                                        <option value="Corte de Cabello VIP ($15.000 - 45 min)">Corte Clásico & Peinado VIP - $15.000</option>
+                                        <option value="Barba Royal & Ritual de Toalla Caliente ($10.000 - 30 min)">Barba Royal & Ritual Toalla Caliente - $10.000</option>
+                                        <option value="Combo Ejecutivo (Corte + Barba) ($22.000 - 60 min)">Combo Ejecutivo (Corte + Barba) - $22.000</option>
+                                        <option value="Corte Niño / Joven ($12.000 - 30 min)">Corte Niño / Joven - $12.000</option>
+                                    </select>
+                                </div>
+
+                                <!-- Fecha y Hora -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gold-400 uppercase tracking-wider mb-2">2. Fecha (DD/MM/AAAA)</label>
+                                        <input type="date" id="book-date" lang="es-AR" required class="w-full bg-onyx-900 border border-gold-500/30 rounded-xl p-3 text-white focus:outline-none focus:border-gold-400 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gold-400 uppercase tracking-wider mb-2">3. Horario</label>
+                                        <select id="book-time" required class="w-full bg-onyx-900 border border-gold-500/30 rounded-xl p-3 text-white focus:outline-none focus:border-gold-400 text-sm">
+                                            <option value="10:00">10:00</option>
+                                            <option value="11:00">11:00</option>
+                                            <option value="12:00">12:00</option>
+                                            <option value="14:00">14:00</option>
+                                            <option value="15:00">15:00</option>
+                                            <option value="16:00">16:00</option>
+                                            <option value="17:00">17:00</option>
+                                            <option value="18:00">18:00</option>
+                                            <option value="19:00">19:00</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Notas adicionales -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gold-400 uppercase tracking-wider mb-2">4. Notas / Preferencias (Opcional)</label>
+                                    <input type="text" id="book-notes" placeholder="Ej: Degradado bajo con sombra..." class="w-full bg-onyx-900 border border-gold-500/30 rounded-xl p-3 text-white focus:outline-none focus:border-gold-400 text-sm">
+                                </div>
+
+                                <button type="submit" class="barber-lamp-button w-full py-3.5 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-black font-bold text-base rounded-xl shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-check-circle"></i>
+                                    <span>Confirmar Cita VIP</span>
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- TAB 3: PUNTOS Y REFERIDOS -->
+                    <section id="tab-points" class="tab-content hidden space-y-6">
+                        <!-- Loyalty Progress -->
+                        <div class="glass-card rounded-2xl p-6 border-gold-500/30">
+                            <h3 class="font-title text-xl font-bold text-white mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-gift text-gold-400"></i>
+                                <span>Progreso de Recompensas</span>
+                            </h3>
+                            <p class="text-xs text-gray-400 mb-4">Acumula puntos y canjea cortes gratis o productos exclusivos.</p>
+
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-xs font-bold">
+                                    <span class="text-gray-300">Nivel Actual: <span id="rewards-tier-name" class="text-gold-400">Bronce</span></span>
+                                    <span class="text-gold-400"><span id="rewards-current-pts">0</span> / 100 Pts para Premio</span>
+                                </div>
+                                <div class="w-full bg-onyx-900 rounded-full h-3 border border-gold-500/20 p-0.5">
+                                    <div id="rewards-bar-fill" class="bg-gradient-to-r from-gold-600 via-gold-400 to-gold-300 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Available Rewards list -->
+                            <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="p-3 bg-onyx-800/80 rounded-xl border border-gold-500/20 flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white">Bebida VIP Gratis</h4>
+                                        <p class="text-[10px] text-gray-400">30 Pts requeridos</p>
+                                    </div>
+                                    <button onclick="claimReward('Bebida VIP Gratis', 30)" class="barber-lamp-button px-3 py-1.5 bg-gold-500/20 text-gold-400 hover:bg-gold-500/30 rounded-lg text-xs font-bold transition">Canjear</button>
+                                </div>
+                                <div class="p-3 bg-onyx-800/80 rounded-xl border border-gold-500/20 flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white">50% Desc. en Creador Barba</h4>
+                                        <p class="text-[10px] text-gray-400">60 Pts requeridos</p>
+                                    </div>
+                                    <button onclick="claimReward('50% Desc. Barba', 60)" class="barber-lamp-button px-3 py-1.5 bg-gold-500/20 text-gold-400 hover:bg-gold-500/30 rounded-lg text-xs font-bold transition">Canjear</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Referral Code Generator & Copy Feature -->
+                        <div class="glass-card rounded-2xl p-6 border-gold-500/30">
+                            <h3 class="font-title text-xl font-bold text-white mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-user-plus text-gold-400"></i>
+                                <span>Sistema de Referidos</span>
+                            </h3>
+                            <p class="text-xs text-gray-400 mb-4">Invita a tus amigos con tu código único. Ganarás <strong>+15 puntos</strong> por cada amigo que reserve su primera cita.</p>
+
+                            <div class="bg-onyx-900/90 p-4 rounded-xl border border-gold-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                <div>
+                                    <span class="text-[10px] uppercase font-bold text-gray-400">Tu Código Personal:</span>
+                                    <div id="referral-code-display" class="font-mono text-xl font-bold text-gold-400 tracking-wider">VIP-BARBER-000</div>
+                                </div>
+                                <button onclick="copyReferralCode()" class="barber-lamp-button w-full sm:w-auto px-5 py-2.5 bg-gold-500 text-black font-bold rounded-xl hover:bg-gold-400 transition flex items-center justify-center gap-2 text-sm shadow-md">
+                                    <i class="fa-solid fa-copy"></i>
+                                    <span>Copiar Código</span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 4: HISTORIAL DE CITAS -->
+                    <section id="tab-history" class="tab-content hidden space-y-4">
+                        <div class="glass-card rounded-2xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-title text-xl font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-gold-400"></i>
+                                    <span>Historial Completo de Citas</span>
+                                </h3>
+                                <span id="history-count" class="text-xs bg-gold-500/20 text-gold-400 px-2.5 py-1 rounded-full font-bold">0 Citas</span>
+                            </div>
+
+                            <div id="history-list" class="space-y-3">
+                                <!-- Dynamic History items -->
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <aside id="barber-shell" class="glass-card rounded-2xl p-5 border border-gold-500/20 h-full sticky top-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold">Panel</div>
+                            <h3 class="font-title text-2xl font-bold text-white mt-1">Barbero</h3>
+                        </div>
+                        <span class="barber-panel-badge text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Live</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-onyx-900/70 border border-gold-500/20 rounded-xl p-3">
+                            <div class="text-[10px] uppercase text-gray-400">Citas</div>
+                            <div id="barber-total-appointments" class="text-2xl font-bold text-white mt-1">0</div>
+                        </div>
+                        <div class="bg-onyx-900/70 border border-gold-500/20 rounded-xl p-3">
+                            <div class="text-[10px] uppercase text-gray-400">Pendientes</div>
+                            <div id="barber-pending-appointments" class="text-2xl font-bold text-gold-400 mt-1">0</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-xs font-bold uppercase tracking-[0.15em] text-gold-400">Agenda</h4>
+                            <span class="text-[10px] text-gray-400">Sincronizada</span>
+                        </div>
+                        <div id="barber-appointments-list" class="space-y-3">
+                            <!-- Dynamic list -->
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="mt-8 text-center text-xs text-gray-500 py-4 border-t border-gold-500/10">
+            <p>© 2026 Barbería VIP App - Todos los derechos reservados.</p>
+        </footer>
+    </div>
+
+    <!-- AUTH MODAL / GUEST LOGIN -->
+    <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4 hidden">
+        <div class="auth-modal-card rounded-2xl p-6 sm:p-8 max-w-md w-full relative">
+            <div class="text-center mb-6">
+                <div class="inline-flex p-3 bg-black/35 border border-gold-400/50 rounded-full text-gold-400 text-2xl mb-2">
+                    <i class="fa-solid fa-scissors"></i>
+                </div>
+                <h2 class="font-title text-2xl font-bold text-white">Acceso Barber VIP</h2>
+                <p class="text-xs text-slate-200 mt-1">Selecciona tu perfil para entrar</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-5">
+                <button type="button" class="auth-role-btn barber-lamp-button active" data-auth-role="cliente">Cliente</button>
+                <button type="button" class="auth-role-btn barber-lamp-button" data-auth-role="barbero">Barbero</button>
+            </div>
+
+            <form id="client-auth-form" class="space-y-4 auth-form" data-auth-role="cliente">
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Nombre Completo</label>
+                    <input type="text" id="client-auth-name" required placeholder="Ej: Carlos Gómez" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                </div>
+
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Teléfono / WhatsApp</label>
+                    <input type="tel" id="client-auth-phone" required placeholder="+54 9 11 1234 5678" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                </div>
+
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Código de referido (opcional)</label>
+                    <input type="text" id="client-referral-code" aria-describedby="client-referral-hint" placeholder="Ej: VIP-123456" autocomplete="off" autocapitalize="characters" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                    <p id="client-referral-hint" class="text-[10px] text-slate-200 mt-1">Opcional. Si continúas como invitado, no necesitas ingresarlo.</p>
+                </div>
+
+                <button type="submit" class="barber-lamp-button w-full py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-black font-bold rounded-xl hover:from-gold-400 hover:to-gold-500 transition text-sm">
+                    Entrar como Cliente
+                </button>
+
+                <div class="relative my-4 text-center">
+                    <span class="auth-divider-label px-2 text-[10px] uppercase">O también</span>
+                    <hr class="border-white/40 absolute top-1/2 inset-x-0 -z-10">
+                </div>
+
+                <button type="button" onclick="loginAsGuest()" class="barber-lamp-button auth-secondary-button w-full py-2.5 font-semibold rounded-xl transition text-xs">
+                    Continuar como Invitado
+                </button>
+            </form>
+
+            <form id="barber-auth-form" class="space-y-4 auth-form hidden" data-auth-role="barbero">
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Nombre del Barbero</label>
+                    <input type="text" id="barber-auth-name" required placeholder="Ej: Mateo" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                </div>
+
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Código de Acceso</label>
+                    <div class="relative">
+                        <input type="password" id="barber-auth-code" required placeholder="Ingrese su código" class="auth-input w-full rounded-xl p-3 pr-10 focus:outline-none text-sm">
+                        <button type="button" id="toggle-barber-code" class="absolute right-3 top-1/2 -translate-y-1/2 text-amber-700 hover:text-amber-900 transition text-sm" aria-label="Mostrar código de acceso">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="barber-lamp-button w-full py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-black font-bold rounded-xl hover:from-gold-400 hover:to-gold-500 transition text-sm">
+                    Entrar como Barbero
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC (Fully preserved state & functionality) -->
+    <script>
+        // APP STATE (PERSISTED IN LOCALSTORAGE)
+        const APP_STORAGE_KEY = 'barber_app_state_v2';
+        const APP_SYNC_CHANNEL = 'barber_app_sync_channel';
+        const BARBER_ACCESS_CODE = 'barbervip2026';
+
+        const DEFAULT_STATE = {
+            currentUser: null,
+            currentRole: 'cliente',
+            points: 25,
+            appointments: [
+                {
+                    id: 'apt-101',
+                    service: 'Corte Clásico & Peinado VIP - $15.000',
+                    barber: "Mateo 'Master Blade'",
+                    date: '2026-10-05',
+                    time: '16:00',
+                    notes: 'Fade medio con textura arriba',
+                    status: 'Confirmada',
+                    price: 15000,
+                    workStatus: 'En proceso',
+                    valuation: 4.8,
+                    clientScore: 88
+                }
+            ],
+            referralCode: 'VIP-' + Math.floor(1000 + Math.random() * 9000),
+            referralAccounts: []
+        };
+
+        let appState = loadData();
+        let syncChannel = null;
+
+        function formatDateDisplay(date) {
+            const match = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return match ? `${match[3]}/${match[2]}/${match[1]}` : String(date || '');
+        }
+
+        function formatTime24Hour(time) {
+            const match = String(time || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (!match) return String(time || '');
+
+            let hours = Number(match[1]) % 12;
+            if (match[3].toUpperCase() === 'PM') hours += 12;
+            return `${String(hours).padStart(2, '0')}:${match[2]}`;
+        }
+
+        function normalizeAppointment(apt, index = 0) {
+            const appointmentPrice = Number(apt.price) || (() => {
+                if (typeof apt.service === 'string') {
+                    const match = apt.service.match(/\$([\d\.]+)/);
+                    if (match && match[1]) return Number(match[1].replace(/\./g, ''));
+                }
+                return 15000;
+            })();
+
+            return {
+                ...apt,
+                id: apt.id || `apt-${Date.now()}-${index}`,
+                time: formatTime24Hour(apt.time),
+                price: appointmentPrice,
+                workStatus: apt.workStatus || (apt.status === 'Atendida' ? 'Finalizado' : 'Pendiente'),
+                valuation: Number(apt.valuation || 0),
+                clientScore: Number(apt.clientScore || 0),
+                status: apt.status || 'Confirmada'
+            };
+        }
+
+        function loadData() {
+            try {
+                const saved = localStorage.getItem(APP_STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && Array.isArray(parsed.appointments)) {
+                        parsed.appointments = parsed.appointments.map(normalizeAppointment);
+                    }
+                    return { ...DEFAULT_STATE, ...parsed };
+                }
+            } catch (e) {
+                console.error('Error loading data', e);
+            }
+            return DEFAULT_STATE;
+        }
+
+        function normalizeReferralPhone(phone) {
+            return String(phone || '').replace(/\D/g, '');
+        }
+
+        function generateReferralCode() {
+            let code;
+            do {
+                code = `VIP-${Math.floor(100000 + Math.random() * 900000)}`;
+            } while ((appState.referralAccounts || []).some(account => account.referralCode === code));
+            return code;
+        }
+
+        function ensureReferralAccount(user, referralCode, points) {
+            if (!user || user.role !== 'cliente' || user.isGuest) return null;
+            appState.referralAccounts = Array.isArray(appState.referralAccounts) ? appState.referralAccounts : [];
+            const phone = normalizeReferralPhone(user.phone);
+            if (!phone) return null;
+
+            let account = appState.referralAccounts.find(item => item.phone === phone);
+            if (!account) {
+                account = {
+                    name: user.name,
+                    phone,
+                    referralCode: referralCode || generateReferralCode(),
+                    points: Number(points ?? appState.points ?? 25),
+                    referredPhones: []
+                };
+                appState.referralAccounts.push(account);
+            } else {
+                account.name = user.name || account.name;
+                account.referralCode = account.referralCode || referralCode || generateReferralCode();
+                account.points = Number(points ?? account.points ?? 25);
+                account.referredPhones = Array.isArray(account.referredPhones) ? account.referredPhones : [];
+            }
+            return account;
+        }
+
+        function updateReferralCodeAvailability() {
+            const phoneInput = document.getElementById('client-auth-phone');
+            const codeInput = document.getElementById('client-referral-code');
+            const hint = document.getElementById('client-referral-hint');
+            if (!phoneInput || !codeInput || !hint) return;
+
+            const phone = normalizeReferralPhone(phoneInput.value);
+            const existingAccount = (appState.referralAccounts || []).find(account => account.phone === phone);
+            codeInput.disabled = !!existingAccount;
+            codeInput.value = existingAccount ? '' : codeInput.value;
+            codeInput.placeholder = existingAccount ? 'Solo disponible al crear la cuenta' : 'Ej: VIP-123456';
+            hint.textContent = existingAccount
+                ? 'Esta cuenta ya fue creada. El código de referido se acepta una sola vez.'
+                : 'Opcional. Si continúas como invitado, no necesitas ingresarlo.';
+        }
+
+        function saveData() {
+            try {
+                const activeAccount = ensureReferralAccount(appState.currentUser, appState.referralCode, appState.points);
+                if (activeAccount) {
+                    appState.referralCode = activeAccount.referralCode;
+                    appState.currentUser.referralCode = activeAccount.referralCode;
+                }
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                broadcastState();
+            } catch (e) {
+                console.error('Error saving data', e);
+            }
+        }
+
+        function broadcastState() {
+            if ('BroadcastChannel' in window && syncChannel) {
+                syncChannel.postMessage({
+                    type: 'state-update',
+                    payload: appState,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        function syncFromRemoteState(newState) {
+            if (!newState || typeof newState !== 'object') return;
+            appState = { ...DEFAULT_STATE, ...newState };
+            updateUI();
+        }
+
+        function initializeSync() {
+            if ('BroadcastChannel' in window) {
+                syncChannel = new BroadcastChannel(APP_SYNC_CHANNEL);
+                syncChannel.onmessage = (event) => {
+                    const payload = event.data;
+                    if (payload && payload.type === 'state-update') {
+                        syncFromRemoteState(payload.payload);
+                    }
+                };
+            }
+
+            window.addEventListener('storage', (event) => {
+                if (event.key !== APP_STORAGE_KEY || !event.newValue) return;
+                try {
+                    const nextState = JSON.parse(event.newValue);
+                    syncFromRemoteState(nextState);
+                } catch (e) {
+                    console.error('Error syncing state', e);
+                }
+            });
+        }
+
+        // INITIALIZATION ON LOAD
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeSync();
+            initializeHaircutBook();
+
+            // Default date field in booking to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dateInput = document.getElementById('book-date');
+            if (dateInput) {
+                dateInput.value = tomorrow.toISOString().split('T')[0];
+            }
+
+            // Check Auth status
+            if (!appState.currentUser) {
+                openAuthModal();
+            } else {
+                const activeAccount = ensureReferralAccount(appState.currentUser, appState.currentUser.referralCode || appState.referralCode, appState.points);
+                if (activeAccount) {
+                    appState.referralCode = activeAccount.referralCode;
+                    appState.currentUser.referralCode = activeAccount.referralCode;
+                    saveData();
+                }
+                renderUserHeader();
+            }
+
+            // Switch to initial tab
+            switchTab('tab-home');
+            updateUI();
+        });
+
+        function openAuthModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('client-auth-name').value.trim();
+            const phone = document.getElementById('client-auth-phone').value.trim();
+            const phoneKey = normalizeReferralPhone(phone);
+            const enteredReferralCode = document.getElementById('client-referral-code').value.trim().toUpperCase();
+
+            if (!name || !phoneKey) return;
+
+            appState.referralAccounts = Array.isArray(appState.referralAccounts) ? appState.referralAccounts : [];
+            let clientAccount = appState.referralAccounts.find(account => account.phone === phoneKey);
+            let referralOwner = null;
+
+            if (clientAccount && enteredReferralCode) {
+                showToast('El código de referido solo puede ingresarse al crear la cuenta', 'error');
+                return;
+            }
+
+            if (!clientAccount && enteredReferralCode) {
+                referralOwner = appState.referralAccounts.find(account => String(account.referralCode || '').toUpperCase() === enteredReferralCode);
+                if (!referralOwner) {
+                    showToast('El código de referido no es válido', 'error');
+                    return;
+                }
+                if (referralOwner.phone === phoneKey) {
+                    showToast('No puedes usar tu propio código de referido', 'error');
+                    return;
+                }
+            }
+
+            if (!clientAccount) {
+                clientAccount = {
+                    name,
+                    phone: phoneKey,
+                    referralCode: generateReferralCode(),
+                    points: 25,
+                    referredBy: referralOwner ? referralOwner.phone : null,
+                    referredPhones: []
+                };
+                appState.referralAccounts.push(clientAccount);
+
+                if (referralOwner) {
+                    referralOwner.referredPhones = Array.isArray(referralOwner.referredPhones) ? referralOwner.referredPhones : [];
+                }
+                if (referralOwner && !referralOwner.referredPhones.includes(phoneKey)) {
+                    referralOwner.points = Number(referralOwner.points ?? 25) + 10;
+                    referralOwner.referredPhones.push(phoneKey);
+                }
+            } else {
+                clientAccount.name = name;
+                clientAccount.referredPhones = Array.isArray(clientAccount.referredPhones) ? clientAccount.referredPhones : [];
+            }
+
+            appState.points = Number(clientAccount.points ?? 25);
+            appState.referralCode = clientAccount.referralCode;
+
+            appState.currentUser = {
+                name: name,
+                phone: phone,
+                role: 'cliente',
+                isGuest: false,
+                referralCode: clientAccount.referralCode
+            };
+            appState.currentRole = 'cliente';
+
+            saveData();
+            closeAuthModal();
+            renderUserHeader();
+            updateUI();
+            document.getElementById('client-referral-code').value = '';
+            showToast(referralOwner ? `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}. El referente recibió 10 puntos.` : `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}.`);
+        }
+
+        function handleBarberAuthSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('barber-auth-name').value.trim();
+            const code = document.getElementById('barber-auth-code').value.trim();
+
+            if (!name || code !== BARBER_ACCESS_CODE) {
+                showToast('Código de barbero incorrecto', 'error');
+                return;
+            }
+
+            appState.currentUser = {
+                name: name,
+                phone: 'Barber VIP',
+                role: 'barbero',
+                isGuest: false
+            };
+            appState.currentRole = 'barbero';
+
+            saveData();
+            closeAuthModal();
+            renderUserHeader();
+            updateUI();
+            showToast(`¡Bienvenido, ${name}!`);
+        }
+
+        function loginAsGuest() {
+            const referralInput = document.getElementById('client-referral-code');
+            if (referralInput) referralInput.value = '';
+            appState.currentUser = {
+                name: 'Cliente Invitado',
+                phone: 'N/A',
+                role: 'cliente',
+                isGuest: true
+            };
+            appState.currentRole = 'cliente';
+            saveData();
+            closeAuthModal();
+            renderUserHeader();
+            updateUI();
+            showToast('Ingresaste en Modo Invitado');
+        }
+
+        function logout() {
+            appState.currentUser = null;
+            saveData();
+            openAuthModal();
+        }
+
+        function renderUserHeader() {
+            const container = document.getElementById('user-profile-header');
+            if (!container) return;
+
+            if (!appState.currentUser) {
+                container.innerHTML = `
+                    <button onclick="openAuthModal()" class="text-xs text-gold-400 font-bold hover:underline">
+                        Iniciar Sesión
+                    </button>
+                `;
+                return;
+            }
+
+            const user = appState.currentUser;
+            const roleLabel = user.role === 'barbero' ? 'Barbero' : 'Cliente';
+            container.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gold-500/20 border border-gold-400 flex items-center justify-center text-gold-400 font-bold text-xs">
+                    <i class="fa-solid ${user.role === 'barbero' ? 'fa-user-tie' : 'fa-user'}"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-xs font-bold text-white flex items-center gap-1">
+                        <span>${escapeHtml(user.name)}</span>
+                        ${user.isGuest ? '<span class="text-[9px] bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded">Invitado</span>' : ''}
+                    </div>
+                    <div class="text-[10px] text-gray-400">${roleLabel} • ${appState.points} Pts VIP</div>
+                </div>
+                <button onclick="logout()" title="Cerrar Sesión" class="text-gray-400 hover:text-red-400 ml-2 transition">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                </button>
+            `;
+        }
+
+        function renderAuthRoleButtons() {
+            const buttons = document.querySelectorAll('.auth-role-btn');
+            buttons.forEach(btn => {
+                const isActive = btn.dataset.authRole === document.querySelector('.auth-form:not(.hidden)')?.dataset.authRole;
+                btn.classList.toggle('active', isActive);
+            });
+        }
+
+        function toggleAuthForm(role) {
+            const forms = document.querySelectorAll('.auth-form');
+            forms.forEach(form => {
+                const isActive = form.dataset.authRole === role;
+                form.classList.toggle('hidden', !isActive);
+            });
+            document.querySelectorAll('.auth-role-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.authRole === role);
+            });
+        }
+
+        const buttonIgnitionTimers = new WeakMap();
+
+        document.addEventListener('pointerdown', (event) => {
+            const target = event.target instanceof Element ? event.target : event.target.parentElement;
+            const button = target?.closest('button');
+            if (!button || button.disabled) return;
+
+            clearTimeout(buttonIgnitionTimers.get(button));
+            button.classList.remove('button-ignited');
+            void button.offsetWidth;
+            button.classList.add('button-ignited');
+            buttonIgnitionTimers.set(button, setTimeout(() => button.classList.remove('button-ignited'), 560));
+        });
+
+        document.addEventListener('click', (event) => {
+            const roleButton = event.target.closest('.auth-role-btn');
+            if (roleButton) {
+                toggleAuthForm(roleButton.dataset.authRole);
+            }
+        });
+
+        document.getElementById('client-auth-form')?.addEventListener('submit', handleAuthSubmit);
+        document.getElementById('barber-auth-form')?.addEventListener('submit', handleBarberAuthSubmit);
+        document.getElementById('client-auth-phone')?.addEventListener('input', updateReferralCodeAvailability);
+        document.getElementById('client-auth-phone')?.addEventListener('change', updateReferralCodeAvailability);
+
+        document.getElementById('toggle-barber-code')?.addEventListener('click', () => {
+            const input = document.getElementById('barber-auth-code');
+            const button = document.getElementById('toggle-barber-code');
+            const icon = button.querySelector('i');
+
+            if (!input || !button || !icon) return;
+
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            icon.classList.toggle('fa-eye', !isPassword);
+            icon.classList.toggle('fa-eye-slash', isPassword);
+            button.setAttribute('aria-label', isPassword ? 'Ocultar código de acceso' : 'Mostrar código de acceso');
+        });
+
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+            // Deactivate all tab buttons
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('bg-gold-500', 'text-black', 'shadow-lg');
+                btn.classList.add('text-gray-300', 'hover:bg-onyx-800');
+            });
+
+            // Show selected tab
+            const target = document.getElementById(tabId);
+            if (target) target.classList.remove('hidden');
+
+            // Highlight button
+            const btn = document.getElementById('btn-' + tabId);
+            if (btn) {
+                btn.classList.remove('text-gray-300', 'hover:bg-onyx-800');
+                btn.classList.add('bg-gold-500', 'text-black', 'shadow-lg');
+            }
+        }
+
+        let currentHaircutPage = 0;
+
+        function initializeHaircutBook() {
+            const viewport = document.getElementById('haircut-book-viewport');
+            if (!viewport) return;
+
+            viewport.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowLeft') changeHaircutPage(-1);
+                if (event.key === 'ArrowRight') changeHaircutPage(1);
+            });
+
+            let startX = null;
+            viewport.addEventListener('pointerdown', (event) => {
+                startX = event.clientX;
+            });
+            viewport.addEventListener('pointerup', (event) => {
+                if (startX === null) return;
+                const distance = event.clientX - startX;
+                if (Math.abs(distance) > 45) changeHaircutPage(distance < 0 ? 1 : -1);
+                startX = null;
+            });
+            viewport.addEventListener('pointercancel', () => {
+                startX = null;
+            });
+        }
+
+        function goToHaircutPage(pageIndex) {
+            const track = document.getElementById('haircut-book-track');
+            const pageNumber = document.getElementById('haircut-book-page-number');
+            const dots = document.querySelectorAll('.haircut-book-dot');
+            if (!track) return;
+
+            const pageCount = track.children.length;
+            currentHaircutPage = (pageIndex + pageCount) % pageCount;
+            track.style.transform = `translateX(-${currentHaircutPage * 100}%)`;
+            if (pageNumber) pageNumber.textContent = `${String(currentHaircutPage + 1).padStart(2, '0')} / ${String(pageCount).padStart(2, '0')}`;
+            dots.forEach((dot, index) => {
+                const isActive = index === currentHaircutPage;
+                dot.classList.toggle('bg-gold-400', isActive);
+                dot.classList.toggle('bg-white/30', !isActive);
+                dot.classList.toggle('scale-125', isActive);
+                dot.setAttribute('aria-current', String(isActive));
+            });
+        }
+
+        function changeHaircutPage(direction) {
+            goToHaircutPage(currentHaircutPage + direction);
+        }
+
+        function handleBooking(e) {
+            e.preventDefault();
+
+            const service = document.getElementById('book-service').value;
+            const barber = "Mateo 'Master Blade'";
+            const date = document.getElementById('book-date').value;
+            const time = formatTime24Hour(document.getElementById('book-time').value);
+            const notes = document.getElementById('book-notes').value.trim();
+
+            const appointmentPrice = service.includes('$') ? Number(service.match(/\$([\d\.]+)/)?.[1]?.replace('.', '')) || 15000 : 15000;
+
+            const newApt = {
+                id: 'apt-' + Date.now(),
+                service: service,
+                barber: barber,
+                date: date,
+                time: time,
+                notes: notes,
+                status: 'Confirmada',
+                price: appointmentPrice,
+                workStatus: 'Pendiente',
+                valuation: 0,
+                clientScore: 0
+            };
+
+            // Add appointment
+            appState.appointments.unshift(newApt);
+
+            // Add points (+10 for new booking)
+            appState.points += 10;
+
+            saveData();
+            updateUI();
+
+            // Clear notes input
+            document.getElementById('book-notes').value = '';
+
+            // Switch to Home tab & notify
+            switchTab('tab-home');
+            showToast('¡Cita Agendada Exitosamente! +10 Puntos Ganados');
+        }
+
+        /* Feature: Repeat Last Cut */
+        function repeatLastCut() {
+            if (!appState.appointments || appState.appointments.length === 0) return;
+
+            const lastApt = appState.appointments[0];
+
+            // Create new booking based on last cut with tomorrow's date
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const newApt = {
+                id: 'apt-' + Date.now(),
+                service: lastApt.service,
+                barber: lastApt.barber,
+                date: tomorrow.toISOString().split('T')[0],
+                time: formatTime24Hour(lastApt.time || '16:00'),
+                notes: lastApt.notes ? `Repetición: ${lastApt.notes}` : 'Corte repetido habitual',
+                status: 'Confirmada',
+                price: lastApt.price || 15000,
+                workStatus: 'Pendiente',
+                valuation: 0,
+                clientScore: 0
+            };
+
+            appState.appointments.unshift(newApt);
+            appState.points += 15; // +10 standard + 5 bonus for repeat
+
+            saveData();
+            updateUI();
+            showToast('¡Corte Repetido Agendado! +15 Puntos Bonus Acumulados');
+        }
+
+        function cancelAppointment(aptId) {
+            appState.appointments = appState.appointments.filter(a => a.id !== aptId);
+            saveData();
+            updateUI();
+            showToast('Cita cancelada correctamente');
+        }
+
+        function claimReward(rewardTitle, costPts) {
+            if (appState.points < costPts) {
+                showToast(`Puntos insuficientes. Necesitas ${costPts} Pts.`, 'error');
+                return;
+            }
+
+            appState.points -= costPts;
+            saveData();
+            updateUI();
+            showToast(`¡Recompensa Canjeada: ${rewardTitle}!`);
+        }
+
+        function copyReferralCode() {
+            const code = appState.referralCode;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('¡Código copiado al portapapeles!');
+            }).catch(() => {
+                // Fallback copy
+                const tempInput = document.createElement('input');
+                tempInput.value = code;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                showToast('¡Código copiado!');
+            });
+        }
+
+        function renderBarberPanel() {
+            const total = document.getElementById('barber-total-appointments');
+            const pending = document.getElementById('barber-pending-appointments');
+            const list = document.getElementById('barber-appointments-list');
+            const dashboardTotal = document.getElementById('barber-dashboard-total');
+            const dashboardPending = document.getElementById('barber-dashboard-pending');
+            const dashboardDone = document.getElementById('barber-dashboard-done');
+            const dashboardClient = document.getElementById('barber-dashboard-client');
+            const dashboardList = document.getElementById('barber-dashboard-list');
+            const totalIncome = document.getElementById('barber-total-income');
+            const avgValuation = document.getElementById('barber-avg-valuation');
+            const clientScore = document.getElementById('barber-client-score');
+            const workStatus = document.getElementById('barber-work-status');
+            const workDetail = document.getElementById('barber-work-detail');
+
+            const appointments = appState.appointments || [];
+            const pendingCount = appointments.filter(a => a.status !== 'Atendida').length;
+            const doneCount = appointments.filter(a => a.status === 'Atendida').length;
+            const totalPrice = appointments.reduce((sum, apt) => sum + Number(apt.price || 0), 0);
+            const avgVal = appointments.length ? (appointments.reduce((sum, apt) => sum + Number(apt.valuation || 0), 0) / appointments.length).toFixed(1) : '0.0';
+            const avgClientScore = appointments.length ? Math.round(appointments.reduce((sum, apt) => sum + Number(apt.clientScore || 0), 0) / appointments.length) : 0;
+            const activeStatus = appointments.length ? appointments[0].workStatus || 'Pendiente' : 'Sin trabajo';
+
+            if (total) total.textContent = appointments.length;
+            if (pending) pending.textContent = pendingCount;
+            if (dashboardTotal) dashboardTotal.textContent = appointments.length;
+            if (dashboardPending) dashboardPending.textContent = pendingCount;
+            if (dashboardDone) dashboardDone.textContent = doneCount;
+            if (dashboardClient) dashboardClient.textContent = appointments.length > 0 ? '1' : '0';
+            if (totalIncome) totalIncome.textContent = `$${totalPrice.toLocaleString('es-AR')}`;
+            if (avgValuation) avgValuation.textContent = `${avgVal}/5`;
+            if (clientScore) clientScore.textContent = `${avgClientScore}/100`;
+            if (workStatus) workStatus.textContent = activeStatus;
+
+            const renderAppointmentCard = (apt) => `
+                <div class="rounded-xl border border-gold-500/20 bg-onyx-900/60 p-3">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-[0.12em] text-gold-400">${escapeHtml(formatDateDisplay(apt.date))}</div>
+                            <div class="text-sm font-bold text-white mt-1">${escapeHtml(formatTime24Hour(apt.time))}</div>
+                        </div>
+                        <span class="text-[9px] font-bold uppercase px-2 py-1 rounded-full ${apt.status === 'Atendida' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-gold-500/15 text-gold-300 border border-gold-500/20'}">
+                            ${escapeHtml(apt.status)}
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-200 font-semibold">${escapeHtml(apt.service)}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">${escapeHtml(apt.barber)}</div>
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] text-gray-300">
+                        <div class="bg-onyx-800/80 rounded-lg p-2">
+                            <div class="text-gray-400 uppercase">Precio</div>
+                            <div class="font-bold text-gold-300 mt-1">$${Number(apt.price || 0).toLocaleString('es-AR')}</div>
+                        </div>
+                        <div class="bg-onyx-800/80 rounded-lg p-2">
+                            <div class="text-gray-400 uppercase">Estado</div>
+                            <div class="font-bold text-white mt-1">${escapeHtml(apt.workStatus || 'Pendiente')}</div>
+                        </div>
+                        <div class="bg-onyx-800/80 rounded-lg p-2">
+                            <div class="text-gray-400 uppercase">Valoración</div>
+                            <div class="font-bold text-emerald-300 mt-1">${Number(apt.valuation || 0).toFixed(1)}/5</div>
+                        </div>
+                        <div class="bg-onyx-800/80 rounded-lg p-2">
+                            <div class="text-gray-400 uppercase">Puntaje</div>
+                            <div class="font-bold text-white mt-1">${Number(apt.clientScore || 0)}/100</div>
+                        </div>
+                    </div>
+                    ${apt.notes ? `<div class="text-[10px] mt-2 italic text-gray-500">"${escapeHtml(apt.notes)}"</div>` : ''}
+                    <button onclick="toggleAppointmentStatus('${apt.id}')" class="barber-lamp-button mt-3 w-full px-2 py-2 rounded-lg border ${apt.status === 'Atendida' ? 'border-gold-500/30 bg-gold-500/10 text-gold-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'} text-[10px] font-bold uppercase tracking-[0.12em] transition">
+                        ${apt.status === 'Atendida' ? 'Reabrir cita' : 'Marcar atendida'}
+                    </button>
+                </div>
+            `;
+
+            if (list) {
+                if (appointments.length === 0) {
+                    list.innerHTML = `
+                        <div class="rounded-xl border border-dashed border-gold-500/30 bg-onyx-900/40 p-3 text-center text-xs text-gray-400">
+                            No hay citas activas en este momento.
+                        </div>
+                    `;
+                } else {
+                    list.innerHTML = appointments.map(renderAppointmentCard).join('');
+                }
+            }
+
+            if (dashboardList) {
+                if (appointments.length === 0) {
+                    dashboardList.innerHTML = `
+                        <div class="rounded-xl border border-dashed border-gold-500/30 bg-onyx-900/40 p-3 text-center text-xs text-gray-400">
+                            No hay citas programadas para hoy.
+                        </div>
+                    `;
+                } else {
+                    dashboardList.innerHTML = appointments.map(renderAppointmentCard).join('');
+                }
+            }
+
+            if (workDetail) {
+                if (appointments.length === 0) {
+                    workDetail.innerHTML = `
+                        <div class="rounded-xl border border-dashed border-gold-500/30 bg-onyx-900/40 p-4 text-center text-xs text-gray-400">
+                            Aún no hay información general del trabajo para mostrar.
+                        </div>
+                    `;
+                } else {
+                    const current = appointments[0];
+                    workDetail.innerHTML = `
+                        <div class="rounded-xl border border-gold-500/20 bg-onyx-900/60 p-4">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div>
+                                    <div class="text-[10px] uppercase tracking-[0.12em] text-gold-400">Trabajo activo</div>
+                                    <div class="text-lg font-bold text-white mt-1">${escapeHtml(current.service)}</div>
+                                </div>
+                                <span class="text-[9px] font-bold uppercase px-2 py-1 rounded-full bg-gold-500/15 text-gold-300 border border-gold-500/20">
+                                    ${escapeHtml(current.workStatus || 'Pendiente')}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-300">
+                                <div class="bg-onyx-800/80 rounded-lg p-3">
+                                    <div class="text-gray-400 uppercase">Precio</div>
+                                    <div class="font-bold text-gold-300 mt-1">$${Number(current.price || 0).toLocaleString('es-AR')}</div>
+                                </div>
+                                <div class="bg-onyx-800/80 rounded-lg p-3">
+                                    <div class="text-gray-400 uppercase">Valoración</div>
+                                    <div class="font-bold text-emerald-300 mt-1">${Number(current.valuation || 0).toFixed(1)}/5</div>
+                                </div>
+                                <div class="bg-onyx-800/80 rounded-lg p-3">
+                                    <div class="text-gray-400 uppercase">Puntaje cliente</div>
+                                    <div class="font-bold text-white mt-1">${Number(current.clientScore || 0)}/100</div>
+                                </div>
+                                <div class="bg-onyx-800/80 rounded-lg p-3">
+                                    <div class="text-gray-400 uppercase">Estado</div>
+                                    <div class="font-bold text-white mt-1">${escapeHtml(current.status)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function toggleAppointmentStatus(aptId) {
+            const apt = appState.appointments.find(item => item.id === aptId);
+            if (!apt) return;
+
+            apt.status = apt.status === 'Atendida' ? 'Confirmada' : 'Atendida';
+            apt.workStatus = apt.status === 'Atendida' ? 'Finalizado' : 'Pendiente';
+            saveData();
+            updateUI();
+            showToast(`Estado actualizado: ${apt.status}`);
+        }
+
+        function updateUI() {
+            renderUserHeader();
+            renderBarberPanel();
+
+            const isBarber = appState.currentUser && appState.currentUser.role === 'barbero';
+            const isClient = appState.currentUser && appState.currentUser.role === 'cliente';
+            const clientShell = document.getElementById('client-shell');
+            const barberShell = document.getElementById('barber-shell');
+            const barberDashboard = document.getElementById('barber-dashboard-view');
+
+            if (clientShell) clientShell.classList.toggle('hidden', !!isBarber || !!(!appState.currentUser));
+            if (barberShell) barberShell.classList.toggle('hidden', !isBarber);
+            if (barberDashboard) barberDashboard.classList.toggle('hidden', !isBarber);
+
+            const navButtons = document.querySelectorAll('.nav-tab');
+            navButtons.forEach(btn => {
+                const shouldHide = !!isBarber || !appState.currentUser;
+                btn.classList.toggle('hidden', shouldHide);
+            });
+
+            if (isClient && !appState.currentUser?.isGuest) {
+                navButtons.forEach(btn => btn.classList.remove('hidden'));
+            }
+
+            if (!appState.currentUser) {
+                navButtons.forEach(btn => btn.classList.remove('hidden'));
+            }
+
+            // 1. Points display
+            document.getElementById('user-pts-display').textContent = appState.points;
+            document.getElementById('rewards-current-pts').textContent = appState.points;
+
+            // 2. Rewards Bar Fill
+            const progress = Math.min(100, Math.round((appState.points / 100) * 100));
+            document.getElementById('rewards-bar-fill').style.width = `${progress}%`;
+
+            let tier = 'Bronce';
+            if (appState.points >= 100) tier = 'Oro VIP';
+            else if (appState.points >= 50) tier = 'Plata';
+            document.getElementById('rewards-tier-name').textContent = tier;
+
+            // 3. Referral code display
+            document.getElementById('referral-code-display').textContent = appState.referralCode;
+
+            // 4. Repeat last cut container visibility
+            const repeatContainer = document.getElementById('repeat-cut-container');
+            const lastCutInfo = document.getElementById('last-cut-info');
+            if (appState.appointments && appState.appointments.length > 0) {
+                repeatContainer.classList.remove('hidden');
+                const last = appState.appointments[0];
+                lastCutInfo.textContent = `${last.service} con ${last.barber}`;
+            } else {
+                repeatContainer.classList.add('hidden');
+            }
+
+            // 5. Upcoming Appointment Card
+            const upcomingContainer = document.getElementById('upcoming-appointment-card');
+            if (appState.appointments && appState.appointments.length > 0) {
+                const next = appState.appointments[0];
+                upcomingContainer.innerHTML = `
+                    <div class="bg-onyx-900/90 border border-gold-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3">
+                            <div class="p-3 bg-gold-500/10 rounded-xl border border-gold-500/30 text-gold-400">
+                                <i class="fa-solid fa-calendar-day text-2xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-gold-400 uppercase tracking-wider">${escapeHtml(formatDateDisplay(next.date))} - ${escapeHtml(formatTime24Hour(next.time))}</div>
+                                <h4 class="text-base font-bold text-white mt-0.5">${escapeHtml(next.service)}</h4>
+                                <p class="text-xs text-gray-400 mt-0.5"><i class="fa-solid fa-user-ninja text-gold-400 mr-1"></i> ${escapeHtml(next.barber)}</p>
+                                ${next.notes ? `<p class="text-[11px] text-gray-500 mt-1 italic">"${escapeHtml(next.notes)}"</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold px-3 py-1 rounded-full">
+                                ${escapeHtml(next.status)}
+                            </span>
+                            <button onclick="cancelAppointment('${next.id}')" title="Cancelar Cita" class="barber-lamp-button px-3 py-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-xs font-bold transition">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                upcomingContainer.innerHTML = `
+                    <div class="text-center py-8 bg-onyx-900/40 rounded-xl border border-dashed border-gold-500/20">
+                        <i class="fa-solid fa-calendar-xmark text-3xl text-gray-600 mb-2"></i>
+                        <p class="text-sm text-gray-400">No tienes citas programadas actualmente.</p>
+                        <button onclick="switchTab('tab-book')" class="barber-lamp-button mt-3 px-3 py-2 text-xs text-gold-400 font-bold hover:underline rounded-lg">Agendar tu primera cita &rarr;</button>
+                    </div>
+                `;
+            }
+
+            // 6. History List
+            const historyList = document.getElementById('history-list');
+            const historyCount = document.getElementById('history-count');
+            historyCount.textContent = `${appState.appointments.length} Cita(s)`;
+
+            if (appState.appointments.length === 0) {
+                historyList.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Sin historial registrado.</p>`;
+            } else {
+                historyList.innerHTML = appState.appointments.map(apt => `
+                    <div class="bg-onyx-900/60 p-3.5 rounded-xl border border-onyx-600/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div>
+                            <div class="text-xs font-bold text-white">${escapeHtml(apt.service)}</div>
+                            <div class="text-[11px] text-gray-400 flex items-center gap-3 mt-1">
+                                <span><i class="fa-regular fa-calendar text-gold-400 mr-1"></i>${escapeHtml(formatDateDisplay(apt.date))} (${escapeHtml(formatTime24Hour(apt.time))})</span>
+                                <span><i class="fa-solid fa-user text-gold-400 mr-1"></i>${escapeHtml(apt.barber)}</span>
+                            </div>
+                        </div>
+                        <span class="text-[10px] uppercase font-bold text-gold-400 bg-gold-500/10 px-2.5 py-1 rounded-md border border-gold-500/20">
+                            +10 Pts Acumulados
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `glass-card text-xs font-bold py-3 px-4 rounded-xl shadow-2xl flex items-center gap-2 border transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${
+                type === 'error' ? 'border-red-500 text-red-300' : 'border-gold-400 text-gold-300'
+            }`;
+
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-gold-400'}"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            // Auto dismiss
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
