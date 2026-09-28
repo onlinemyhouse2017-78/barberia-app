@@ -899,8 +899,25 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
     <!-- JAVASCRIPT LOGIC (Fully preserved state & functionality) -->
     <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAcjRLfXLzHGG44-oJX6sZpTeFLc54nLJw",
+            authDomain: "barberia-vip-b9f6f.firebaseapp.com",
+            databaseURL: "https://barberia-vip-b9f6f-default-rtdb.firebaseio.com",
+            projectId: "barberia-vip-b9f6f",
+            storageBucket: "barberia-vip-b9f6f.firebasestorage.app",
+            messagingSenderId: "40679736149",
+            appId: "1:40679736149:web:cd0cb2eeedd9a64a4aa5dc"
+        };
+
+        const firebaseApp = firebase.initializeApp(firebaseConfig);
+        const firebaseDatabase = firebase.database(firebaseApp);
+
         // APP STATE (PERSISTED IN LOCALSTORAGE)
         const APP_STORAGE_KEY = 'barber_app_state_v2';
         const APP_SYNC_CHANNEL = 'barber_app_sync_channel';
