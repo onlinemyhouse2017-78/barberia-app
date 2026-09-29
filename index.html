@@ -846,6 +846,7 @@
             </div>
 
             <form id="client-auth-form" class="space-y-4 auth-form" data-auth-role="cliente">
+                <div id="client-signup-fields">
                 <div>
                     <label class="auth-label block text-xs font-bold mb-1">Nombre Completo</label>
                     <input type="text" id="client-auth-name" required placeholder="Ej: Carlos Gómez" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
@@ -861,10 +862,23 @@
                     <input type="text" id="client-referral-code" aria-describedby="client-referral-hint" placeholder="Ej: VIP-123456" autocomplete="off" autocapitalize="characters" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
                     <p id="client-referral-hint" class="text-[10px] text-slate-200 mt-1">Opcional. Si continúas como invitado, no necesitas ingresarlo.</p>
                 </div>
+                </div>
 
-                <button type="submit" class="barber-lamp-button w-full py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-black font-bold rounded-xl hover:from-gold-400 hover:to-gold-500 transition text-sm">
-                    Entrar como Cliente
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Correo electrónico</label>
+                    <input type="email" id="client-auth-email" required autocomplete="email" placeholder="nombre@correo.com" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                </div>
+
+                <div>
+                    <label class="auth-label block text-xs font-bold mb-1">Contraseña</label>
+                    <input type="password" id="client-auth-password" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                </div>
+
+                <button id="client-auth-submit" type="submit" class="barber-lamp-button w-full py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-black font-bold rounded-xl hover:from-gold-400 hover:to-gold-500 transition text-sm">
+                    Crear cuenta de Cliente
                 </button>
+
+                <button id="client-auth-mode-toggle" type="button" onclick="toggleClientAuthMode()" class="w-full text-xs text-gold-300 hover:text-gold-200 underline">Ya tengo una cuenta</button>
 
                 <div class="relative my-4 text-center">
                     <span class="auth-divider-label px-2 text-[10px] uppercase">O también</span>
@@ -902,6 +916,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
     <!-- JAVASCRIPT LOGIC (Fully preserved state & functionality) -->
     <script>
@@ -917,11 +932,13 @@
 
         const firebaseApp = firebase.initializeApp(firebaseConfig);
         const firebaseDatabase = firebase.database(firebaseApp);
+        const firebaseAuth = firebase.auth(firebaseApp);
 
         // APP STATE (PERSISTED IN LOCALSTORAGE)
         const APP_STORAGE_KEY = 'barber_app_state_v2';
         const APP_SYNC_CHANNEL = 'barber_app_sync_channel';
         const BARBER_ACCESS_CODE = 'barbervip2026';
+        let clientAuthMode = 'register';
 
         const DEFAULT_STATE = {
             currentUser: null,
@@ -1144,14 +1161,74 @@
             document.getElementById('auth-modal').classList.add('hidden');
         }
 
-        function handleAuthSubmit(e) {
+        function toggleClientAuthMode() {
+            clientAuthMode = clientAuthMode === 'register' ? 'login' : 'register';
+            const isRegistering = clientAuthMode === 'register';
+            const signupFields = document.getElementById('client-signup-fields');
+            const nameInput = document.getElementById('client-auth-name');
+            const phoneInput = document.getElementById('client-auth-phone');
+            const referralInput = document.getElementById('client-referral-code');
+            const passwordInput = document.getElementById('client-auth-password');
+
+            signupFields.classList.toggle('hidden', !isRegistering);
+            nameInput.required = isRegistering;
+            phoneInput.required = isRegistering;
+            referralInput.value = '';
+            passwordInput.autocomplete = isRegistering ? 'new-password' : 'current-password';
+            document.getElementById('client-auth-submit').textContent = isRegistering ? 'Crear cuenta de Cliente' : 'Iniciar sesión';
+            document.getElementById('client-auth-mode-toggle').textContent = isRegistering ? 'Ya tengo una cuenta' : 'Crear cuenta nueva';
+        }
+
+        function showFirebaseAuthError(error) {
+            const messages = {
+                'auth/email-already-in-use': 'Ese correo ya tiene una cuenta. Inicia sesión.',
+                'auth/invalid-email': 'El correo electrónico no es válido.',
+                'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+                'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+                'auth/user-not-found': 'No existe una cuenta con ese correo.',
+                'auth/wrong-password': 'Correo o contraseña incorrectos.',
+                'auth/too-many-requests': 'Demasiados intentos. Espera un momento y vuelve a probar.'
+            };
+            showToast(messages[error.code] || 'No se pudo completar la autenticación. Revisa la conexión e inténtalo otra vez.', 'error');
+        }
+
+        async function handleAuthSubmit(e) {
             e.preventDefault();
+            const email = document.getElementById('client-auth-email').value.trim().toLowerCase();
+            const password = document.getElementById('client-auth-password').value;
             const name = document.getElementById('client-auth-name').value.trim();
             const phone = document.getElementById('client-auth-phone').value.trim();
             const phoneKey = normalizeReferralPhone(phone);
             const enteredReferralCode = document.getElementById('client-referral-code').value.trim().toUpperCase();
 
-            if (!name || !phoneKey) return;
+            if (!email || !password || (clientAuthMode === 'register' && (!name || !phoneKey))) return;
+
+            if (clientAuthMode === 'login') {
+                try {
+                    const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+                    const account = (appState.referralAccounts || []).find(item => item.firebaseUid === credential.user.uid);
+                    const userName = credential.user.displayName || email.split('@')[0];
+                    appState.points = Number(account?.points ?? 25);
+                    appState.referralCode = account?.referralCode || appState.referralCode;
+                    appState.currentUser = {
+                        name: userName,
+                        phone: account?.phone || '',
+                        role: 'cliente',
+                        isGuest: false,
+                        firebaseUid: credential.user.uid,
+                        referralCode: account?.referralCode || appState.referralCode
+                    };
+                    appState.currentRole = 'cliente';
+                    saveData();
+                    closeAuthModal();
+                    renderUserHeader();
+                    updateUI();
+                    showToast(`¡Bienvenido, ${userName}!`);
+                } catch (error) {
+                    showFirebaseAuthError(error);
+                }
+                return;
+            }
 
             appState.referralAccounts = Array.isArray(appState.referralAccounts) ? appState.referralAccounts : [];
             let clientAccount = appState.referralAccounts.find(account => account.phone === phoneKey);
@@ -1174,10 +1251,21 @@
                 }
             }
 
+            let firebaseUser;
+            try {
+                const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+                firebaseUser = credential.user;
+                await firebaseUser.updateProfile({ displayName: name });
+            } catch (error) {
+                showFirebaseAuthError(error);
+                return;
+            }
+
             if (!clientAccount) {
                 clientAccount = {
                     name,
                     phone: phoneKey,
+                    firebaseUid: firebaseUser.uid,
                     referralCode: generateReferralCode(),
                     points: 25,
                     referredBy: referralOwner ? referralOwner.phone : null,
@@ -1194,6 +1282,7 @@
                 }
             } else {
                 clientAccount.name = name;
+                clientAccount.firebaseUid = firebaseUser.uid;
                 clientAccount.referredPhones = Array.isArray(clientAccount.referredPhones) ? clientAccount.referredPhones : [];
             }
 
@@ -1205,6 +1294,7 @@
                 phone: phone,
                 role: 'cliente',
                 isGuest: false,
+                firebaseUid: firebaseUser.uid,
                 referralCode: clientAccount.referralCode
             };
             appState.currentRole = 'cliente';
@@ -1259,7 +1349,13 @@
             showToast('Ingresaste en Modo Invitado');
         }
 
-        function logout() {
+        async function logout() {
+            try {
+                await firebaseAuth.signOut();
+            } catch (error) {
+                showFirebaseAuthError(error);
+                return;
+            }
             appState.currentUser = null;
             saveData();
             openAuthModal();
