@@ -1067,6 +1067,72 @@
             return account;
         }
 
+        function normalizeReferralCode(code) {
+            return String(code || '').trim().toUpperCase();
+        }
+
+        async function publishReferralCode(user, account) {
+            const code = normalizeReferralCode(account?.referralCode);
+            if (!user?.uid || !code) return;
+
+            try {
+                await firebaseDatabase.ref(`referralCodes/${code}`).set({
+                    uid: user.uid,
+                    name: account.name || user.displayName || '',
+                    phone: account.phone || '',
+                    referralCode: code
+                });
+                return true;
+            } catch (error) {
+                console.error('Error publishing referral code', error);
+                showToast('No se pudo publicar tu código en Firebase. Revisa las reglas de la base de datos.', 'error');
+                return false;
+            }
+        }
+
+        async function resolveReferralOwner(code) {
+            const normalizedCode = normalizeReferralCode(code);
+            try {
+                const snapshot = await firebaseDatabase.ref(`referralCodes/${normalizedCode}`).once('value');
+                if (snapshot.exists()) return snapshot.val();
+            } catch (error) {
+                const localOwner = (appState.referralAccounts || []).find(account => normalizeReferralCode(account.referralCode) === normalizedCode);
+                if (localOwner) return localOwner;
+                throw error;
+            }
+            return (appState.referralAccounts || []).find(account => normalizeReferralCode(account.referralCode) === normalizedCode) || null;
+        }
+
+        async function awardReferralPoints(owner, referredClient) {
+            const ownerUid = owner?.uid || owner?.firebaseUid;
+            if (!ownerUid) throw new Error('No se encontró la cuenta Firebase del referente.');
+
+            let alreadyReferred = false;
+            const result = await firebaseDatabase.ref(`users/${ownerUid}`).transaction(ownerState => {
+                alreadyReferred = false;
+                if (!ownerState || typeof ownerState !== 'object') return;
+
+                const accounts = Array.isArray(ownerState.referralAccounts) ? ownerState.referralAccounts : [];
+                const ownerAccount = accounts.find(account => account.firebaseUid === ownerUid || account.phone === owner.phone);
+                if (!ownerAccount) return;
+
+                ownerAccount.referredPhones = Array.isArray(ownerAccount.referredPhones) ? ownerAccount.referredPhones : [];
+                if (ownerAccount.referredPhones.includes(referredClient.phone)) {
+                    alreadyReferred = true;
+                    return ownerState;
+                }
+
+                ownerAccount.points = Number(ownerAccount.points ?? ownerState.points ?? 25) + 10;
+                ownerAccount.referredPhones.push(referredClient.phone);
+                ownerState.referralAccounts = accounts;
+                ownerState.points = ownerAccount.points;
+                return ownerState;
+            });
+
+            if (!result.committed) throw new Error('Firebase no permitió actualizar los puntos del referente.');
+            return { awarded: !alreadyReferred, points: Number(result.snapshot.val()?.points || 0) };
+        }
+
         function updateReferralCodeAvailability() {
             const phoneInput = document.getElementById('client-auth-phone');
             const codeInput = document.getElementById('client-referral-code');
@@ -1269,8 +1335,15 @@
             };
             appState.currentRole = 'cliente';
 
+            const referralAccount = ensureReferralAccount(appState.currentUser, appState.currentUser.referralCode || appState.referralCode, appState.points);
+            if (referralAccount) {
+                appState.referralCode = referralAccount.referralCode;
+                appState.currentUser.referralCode = referralAccount.referralCode;
+            }
+
             await userRef.set(appState);
             await mirrorUserAppointments(user.uid, appState.appointments);
+            await publishReferralCode(user, referralAccount);
             localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
             attachFirebaseUserStateListener(user, userRef);
             attachFirebaseUserAppointmentsListener(user);
@@ -1278,8 +1351,15 @@
 
         async function initializeFirebaseUserData(user) {
             const userRef = firebaseDatabase.ref(`users/${user.uid}`);
+            const referralAccount = ensureReferralAccount(appState.currentUser, appState.currentUser?.referralCode || appState.referralCode, appState.points);
+            if (referralAccount) {
+                referralAccount.firebaseUid = user.uid;
+                appState.referralCode = referralAccount.referralCode;
+                appState.currentUser.referralCode = referralAccount.referralCode;
+            }
             await userRef.set(appState);
             await mirrorUserAppointments(user.uid, appState.appointments);
+            await publishReferralCode(user, referralAccount);
             attachFirebaseUserStateListener(user, userRef);
             attachFirebaseUserAppointmentsListener(user);
         }
@@ -1532,12 +1612,18 @@
             }
 
             if (!clientAccount && enteredReferralCode) {
-                referralOwner = appState.referralAccounts.find(account => String(account.referralCode || '').toUpperCase() === enteredReferralCode);
+                try {
+                    referralOwner = await resolveReferralOwner(enteredReferralCode);
+                } catch (error) {
+                    console.error('Error validating referral code', error);
+                    showToast('No se pudo validar el código compartido con Firebase. Inténtalo de nuevo.', 'error');
+                    return;
+                }
                 if (!referralOwner) {
                     showToast('El código de referido no es válido', 'error');
                     return;
                 }
-                if (referralOwner.phone === phoneKey) {
+                if (normalizeReferralPhone(referralOwner.phone) === phoneKey) {
                     showToast('No puedes usar tu propio código de referido', 'error');
                     return;
                 }
@@ -1564,14 +1650,6 @@
                     referredPhones: []
                 };
                 appState.referralAccounts.push(clientAccount);
-
-                if (referralOwner) {
-                    referralOwner.referredPhones = Array.isArray(referralOwner.referredPhones) ? referralOwner.referredPhones : [];
-                }
-                if (referralOwner && !referralOwner.referredPhones.includes(phoneKey)) {
-                    referralOwner.points = Number(referralOwner.points ?? 25) + 10;
-                    referralOwner.referredPhones.push(phoneKey);
-                }
             } else {
                 clientAccount.name = name;
                 clientAccount.firebaseUid = firebaseUser.uid;
@@ -1602,11 +1680,25 @@
                 showToast('La cuenta se creó, pero Firebase rechazó los datos. Revisa las reglas.', 'error');
                 return;
             }
+
+            let referralRewarded = false;
+            if (referralOwner) {
+                try {
+                    const reward = await awardReferralPoints(referralOwner, { uid: firebaseUser.uid, phone: phoneKey });
+                    referralRewarded = reward.awarded;
+                } catch (error) {
+                    console.error('Error awarding referral points', error);
+                    showToast('La cuenta se creó, pero Firebase no pudo acreditar los 10 puntos al referente.', 'error');
+                }
+            }
+
             closeAuthModal();
             renderUserHeader();
             updateUI();
             document.getElementById('client-referral-code').value = '';
-            showToast(referralOwner ? `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}. El referente recibió 10 puntos.` : `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}.`);
+            showToast(referralOwner
+                ? `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}.${referralRewarded ? ' El referente recibió 10 puntos.' : ''}`
+                : `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}.`);
         }
 
         async function handleBarberAuthSubmit(e) {
@@ -2092,6 +2184,9 @@
                                     <div class="text-gray-200 mt-1 break-words">${escapeHtml(client.clientReferralCode || 'Sin código')}</div>
                                 </div>
                             </div>
+                            <button type="button" onclick="removeBarberClient('${escapeHtml(client.clientUid || '')}')" ${client.clientUid ? '' : 'disabled'} class="barber-lamp-button mt-3 w-full rounded-lg border border-red-400/35 bg-red-500/10 px-3 py-2 pl-5 text-xs font-bold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40">
+                                Eliminar cliente de la lista
+                            </button>
                         </header>
                         <div class="divide-y divide-white/10 mt-3">
                             ${clientAppointments.map(appointment => `
@@ -2199,6 +2294,24 @@
             saveData();
             updateUI();
             showToast(`Estado actualizado: ${apt.status}`);
+        }
+
+        async function removeBarberClient(clientUid) {
+            if (APP_PANEL !== 'barbero' || !clientUid) return;
+            const clientAppointments = (appState.appointments || []).filter(appointment => appointment.clientUid === clientUid);
+            const clientName = clientAppointments[0]?.clientName || `Cliente ${clientUid.slice(-6)}`;
+            if (!confirm(`¿Eliminar a ${clientName} de la lista del barbero? Su cuenta y su historial de cliente no se borrarán.`)) return;
+
+            try {
+                await firebaseDatabase.ref(`barberAppointments/${clientUid}`).remove();
+                appState.appointments = (appState.appointments || []).filter(appointment => appointment.clientUid !== clientUid);
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                updateUI();
+                showToast(`${clientName} fue eliminado de la lista del barbero.`);
+            } catch (error) {
+                console.error('Error removing barber client entry', error);
+                showToast('No se pudo eliminar el cliente de la lista. Revisa los permisos de Firebase.', 'error');
+            }
         }
 
         function updateUI() {
