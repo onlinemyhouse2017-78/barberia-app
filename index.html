@@ -892,15 +892,15 @@
 
             <form id="barber-auth-form" class="space-y-4 auth-form hidden" data-auth-role="barbero">
                 <div>
-                    <label class="auth-label block text-xs font-bold mb-1">Nombre del Barbero</label>
-                    <input type="text" id="barber-auth-name" required placeholder="Ej: Mateo" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
+                    <label class="auth-label block text-xs font-bold mb-1">Correo del barbero</label>
+                    <input type="email" id="barber-auth-email" required autocomplete="username" placeholder="barbero@correo.com" class="auth-input w-full rounded-xl p-3 focus:outline-none text-sm">
                 </div>
 
                 <div>
-                    <label class="auth-label block text-xs font-bold mb-1">Código de Acceso</label>
+                    <label class="auth-label block text-xs font-bold mb-1">Contraseña</label>
                     <div class="relative">
-                        <input type="password" id="barber-auth-code" required placeholder="Ingrese su código" class="auth-input w-full rounded-xl p-3 pr-10 focus:outline-none text-sm">
-                        <button type="button" id="toggle-barber-code" class="absolute right-3 top-1/2 -translate-y-1/2 text-amber-700 hover:text-amber-900 transition text-sm" aria-label="Mostrar código de acceso">
+                        <input type="password" id="barber-auth-password" required autocomplete="current-password" placeholder="Ingrese su contraseña" class="auth-input w-full rounded-xl p-3 pr-10 focus:outline-none text-sm">
+                        <button type="button" id="toggle-barber-password" class="absolute right-3 top-1/2 -translate-y-1/2 text-amber-700 hover:text-amber-900 transition text-sm" aria-label="Mostrar contraseña">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
@@ -937,7 +937,7 @@
         // APP STATE (PERSISTED IN LOCALSTORAGE)
         const APP_STORAGE_KEY = 'barber_app_state_v2';
         const APP_SYNC_CHANNEL = 'barber_app_sync_channel';
-        const BARBER_ACCESS_CODE = 'barbervip2026';
+        const BARBER_EMAIL = 'onlinemyhouse2017@gmail.com';
         let clientAuthMode = 'register';
 
         const DEFAULT_STATE = {
@@ -965,6 +965,12 @@
 
         let appState = loadData();
         let syncChannel = null;
+        let firebaseUserStateRef = null;
+        let firebaseUserStateListener = null;
+        let firebaseUserAppointmentsRef = null;
+        let firebaseUserAppointmentsListener = null;
+        let firebaseBarberAppointmentsRef = null;
+        let firebaseBarberAppointmentsListener = null;
 
         function formatDateDisplay(date) {
             const match = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1082,6 +1088,206 @@
             } catch (e) {
                 console.error('Error saving data', e);
             }
+
+            const firebaseUser = firebaseAuth.currentUser;
+            if (appState.currentUser?.role === 'barbero' && firebaseUser?.email?.toLowerCase() === BARBER_EMAIL) {
+                const updates = {};
+                (appState.appointments || []).forEach(appointment => {
+                    if (appointment.clientUid && appointment.id) {
+                        updates[`${appointment.clientUid}/${appointment.id}`] = appointment;
+                    }
+                });
+                firebaseDatabase.ref('barberAppointments').update(updates).catch(error => {
+                    console.error('Error saving barber appointment updates', error);
+                    showToast('No se pudieron sincronizar los cambios de la agenda.', 'error');
+                });
+            } else if (firebaseUserStateRef && firebaseUser?.uid === appState.currentUser?.firebaseUid) {
+                Promise.all([
+                    firebaseUserStateRef.set(appState),
+                    mirrorUserAppointments(firebaseUser.uid, appState.appointments)
+                ]).catch(error => {
+                    console.error('Error saving Firebase user data', error);
+                    showToast('No se pudieron sincronizar tus datos con Firebase.', 'error');
+                });
+            }
+        }
+
+        function detachFirebaseUserStateListener() {
+            if (firebaseUserStateRef && firebaseUserStateListener) {
+                firebaseUserStateRef.off('value', firebaseUserStateListener);
+            }
+            firebaseUserStateRef = null;
+            firebaseUserStateListener = null;
+        }
+
+        function detachFirebaseAppointmentsListeners() {
+            if (firebaseUserAppointmentsRef && firebaseUserAppointmentsListener) {
+                firebaseUserAppointmentsRef.off('value', firebaseUserAppointmentsListener);
+            }
+            if (firebaseBarberAppointmentsRef && firebaseBarberAppointmentsListener) {
+                firebaseBarberAppointmentsRef.off('value', firebaseBarberAppointmentsListener);
+            }
+            firebaseUserAppointmentsRef = null;
+            firebaseUserAppointmentsListener = null;
+            firebaseBarberAppointmentsRef = null;
+            firebaseBarberAppointmentsListener = null;
+        }
+
+        function mirrorUserAppointments(uid, appointments) {
+            const appointmentsById = {};
+            (appointments || []).forEach(appointment => {
+                if (appointment?.id) {
+                    appointmentsById[appointment.id] = { ...appointment, clientUid: uid };
+                }
+            });
+            return firebaseDatabase.ref(`barberAppointments/${uid}`).set(appointmentsById);
+        }
+
+        function attachFirebaseUserAppointmentsListener(user) {
+            firebaseUserAppointmentsRef = firebaseDatabase.ref(`barberAppointments/${user.uid}`);
+            firebaseUserAppointmentsListener = snapshot => {
+                const remoteAppointments = Object.entries(snapshot.val() || {}).map(([id, appointment]) =>
+                    normalizeAppointment({ ...appointment, id, clientUid: user.uid })
+                );
+                const changed = JSON.stringify(remoteAppointments) !== JSON.stringify(appState.appointments || []);
+                if (!changed) return;
+
+                appState.appointments = remoteAppointments;
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                if (firebaseUserStateRef) {
+                    firebaseUserStateRef.update({ appointments: remoteAppointments }).catch(error => {
+                        console.error('Error updating private appointment state', error);
+                    });
+                }
+                updateUI();
+            };
+            firebaseUserAppointmentsRef.on('value', firebaseUserAppointmentsListener, error => {
+                console.error('Error listening to client appointments', error);
+                showToast('No se pudieron cargar las citas sincronizadas.', 'error');
+            });
+        }
+
+        function attachFirebaseBarberAppointmentsListener(user) {
+            firebaseBarberAppointmentsRef = firebaseDatabase.ref('barberAppointments');
+            firebaseBarberAppointmentsListener = snapshot => {
+                const appointments = [];
+                Object.entries(snapshot.val() || {}).forEach(([clientUid, clientAppointments]) => {
+                    Object.entries(clientAppointments || {}).forEach(([id, appointment]) => {
+                        appointments.push(normalizeAppointment({ ...appointment, id, clientUid }));
+                    });
+                });
+                appState.appointments = appointments;
+                appState.currentUser = {
+                    name: user.displayName || user.email,
+                    phone: 'Barber VIP',
+                    role: 'barbero',
+                    isGuest: false,
+                    firebaseUid: user.uid
+                };
+                appState.currentRole = 'barbero';
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                updateUI();
+            };
+            firebaseBarberAppointmentsRef.on('value', firebaseBarberAppointmentsListener, error => {
+                console.error('Error listening to barber appointments', error);
+                showToast('No se pudo cargar la agenda compartida. Revisa las reglas de Firebase.', 'error');
+            });
+        }
+
+        function attachFirebaseUserStateListener(user, userRef) {
+            detachFirebaseUserStateListener();
+            firebaseUserStateRef = userRef;
+            firebaseUserStateListener = snapshot => {
+                if (!snapshot.exists()) return;
+                const remoteState = snapshot.val();
+                if (!remoteState || typeof remoteState !== 'object') return;
+
+                appState = { ...DEFAULT_STATE, ...remoteState };
+                if (Array.isArray(appState.appointments)) {
+                    appState.appointments = appState.appointments.map(normalizeAppointment);
+                }
+                appState.currentUser = {
+                    ...(appState.currentUser || {}),
+                    firebaseUid: user.uid,
+                    role: 'cliente',
+                    isGuest: false
+                };
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                updateUI();
+            };
+            userRef.on('value', firebaseUserStateListener, error => {
+                console.error('Error listening to Firebase user data', error);
+                showToast('No se pudieron cargar los cambios sincronizados.', 'error');
+            });
+        }
+
+        async function loadFirebaseUserData(user) {
+            detachFirebaseUserStateListener();
+            detachFirebaseAppointmentsListeners();
+            const userRef = firebaseDatabase.ref(`users/${user.uid}`);
+            const [userSnapshot, appointmentsSnapshot] = await Promise.all([
+                userRef.once('value'),
+                firebaseDatabase.ref(`barberAppointments/${user.uid}`).once('value')
+            ]);
+            appState = userSnapshot.exists()
+                ? { ...DEFAULT_STATE, ...userSnapshot.val() }
+                : { ...DEFAULT_STATE, currentUser: null, currentRole: 'cliente' };
+            if (appointmentsSnapshot.exists()) {
+                appState.appointments = Object.entries(appointmentsSnapshot.val() || {}).map(([id, appointment]) =>
+                    normalizeAppointment({ ...appointment, id, clientUid: user.uid })
+                );
+            } else if (Array.isArray(appState.appointments)) {
+                appState.appointments = appState.appointments.map(normalizeAppointment);
+            }
+
+            const account = (appState.referralAccounts || []).find(item => item.firebaseUid === user.uid);
+            const userName = user.displayName || user.email?.split('@')[0] || 'Cliente';
+            appState.points = Number(account?.points ?? appState.points ?? 25);
+            appState.referralCode = account?.referralCode || appState.referralCode;
+            appState.currentUser = {
+                name: account?.name || userName,
+                phone: account?.phone || '',
+                role: 'cliente',
+                isGuest: false,
+                firebaseUid: user.uid,
+                referralCode: account?.referralCode || appState.referralCode
+            };
+            appState.currentRole = 'cliente';
+
+            await userRef.set(appState);
+            if (!appointmentsSnapshot.exists()) {
+                await mirrorUserAppointments(user.uid, appState.appointments);
+            }
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+            attachFirebaseUserStateListener(user, userRef);
+            attachFirebaseUserAppointmentsListener(user);
+        }
+
+        async function initializeFirebaseUserData(user) {
+            const userRef = firebaseDatabase.ref(`users/${user.uid}`);
+            await userRef.set(appState);
+            await mirrorUserAppointments(user.uid, appState.appointments);
+            attachFirebaseUserStateListener(user, userRef);
+            attachFirebaseUserAppointmentsListener(user);
+        }
+
+        async function loadFirebaseBarberData(user) {
+            detachFirebaseUserStateListener();
+            detachFirebaseAppointmentsListeners();
+            appState = {
+                ...DEFAULT_STATE,
+                appointments: [],
+                currentUser: {
+                    name: user.displayName || user.email,
+                    phone: 'Barber VIP',
+                    role: 'barbero',
+                    isGuest: false,
+                    firebaseUid: user.uid
+                },
+                currentRole: 'barbero'
+            };
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+            attachFirebaseBarberAppointmentsListener(user);
         }
 
         function broadcastState() {
@@ -1096,6 +1302,9 @@
 
         function syncFromRemoteState(newState) {
             if (!newState || typeof newState !== 'object') return;
+            const activeUid = firebaseAuth.currentUser?.uid || null;
+            const incomingUid = newState.currentUser?.firebaseUid || null;
+            if (activeUid !== incomingUid) return;
             appState = { ...DEFAULT_STATE, ...newState };
             updateUI();
         }
@@ -1123,9 +1332,39 @@
         }
 
         // INITIALIZATION ON LOAD
-        window.addEventListener('DOMContentLoaded', () => {
+        function getInitialFirebaseUser() {
+            return new Promise(resolve => {
+                let unsubscribe = () => {};
+                unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+                    unsubscribe();
+                    resolve(user);
+                }, () => resolve(null));
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
             initializeSync();
             initializeHaircutBook();
+
+            const firebaseUser = await getInitialFirebaseUser();
+            if (firebaseUser) {
+                try {
+                    if (firebaseUser.email?.toLowerCase() === BARBER_EMAIL) {
+                        await loadFirebaseBarberData(firebaseUser);
+                    } else {
+                        await loadFirebaseUserData(firebaseUser);
+                    }
+                } catch (error) {
+                    console.error('Error restoring Firebase user data', error);
+                    await firebaseAuth.signOut();
+                    appState = { ...DEFAULT_STATE, currentUser: null, currentRole: 'cliente' };
+                    localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                    showToast('No se pudieron cargar tus datos. Revisa las reglas de Firebase.', 'error');
+                }
+            } else if (appState.currentUser && !appState.currentUser.isGuest) {
+                appState = { ...DEFAULT_STATE, currentUser: null, currentRole: 'cliente' };
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+            }
 
             // Default date field in booking to tomorrow
             const tomorrow = new Date();
@@ -1206,25 +1445,19 @@
             if (clientAuthMode === 'login') {
                 try {
                     const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
-                    const account = (appState.referralAccounts || []).find(item => item.firebaseUid === credential.user.uid);
-                    const userName = credential.user.displayName || email.split('@')[0];
-                    appState.points = Number(account?.points ?? 25);
-                    appState.referralCode = account?.referralCode || appState.referralCode;
-                    appState.currentUser = {
-                        name: userName,
-                        phone: account?.phone || '',
-                        role: 'cliente',
-                        isGuest: false,
-                        firebaseUid: credential.user.uid,
-                        referralCode: account?.referralCode || appState.referralCode
-                    };
-                    appState.currentRole = 'cliente';
-                    saveData();
+                    if (credential.user.email?.toLowerCase() === BARBER_EMAIL) {
+                        await loadFirebaseBarberData(credential.user);
+                    } else {
+                        await loadFirebaseUserData(credential.user);
+                    }
+                    const userName = appState.currentUser.name;
                     closeAuthModal();
                     renderUserHeader();
                     updateUI();
                     showToast(`¡Bienvenido, ${userName}!`);
                 } catch (error) {
+                    detachFirebaseUserStateListener();
+                    await firebaseAuth.signOut();
                     showFirebaseAuthError(error);
                 }
                 return;
@@ -1300,6 +1533,16 @@
             appState.currentRole = 'cliente';
 
             saveData();
+            try {
+                await initializeFirebaseUserData(firebaseUser);
+            } catch (error) {
+                console.error('Error initializing Firebase user data', error);
+                await firebaseAuth.signOut();
+                appState.currentUser = null;
+                saveData();
+                showToast('La cuenta se creó, pero Firebase rechazó los datos. Revisa las reglas.', 'error');
+                return;
+            }
             closeAuthModal();
             renderUserHeader();
             updateUI();
@@ -1307,32 +1550,55 @@
             showToast(referralOwner ? `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}. El referente recibió 10 puntos.` : `¡Bienvenido, ${name}! Tu código personal es ${clientAccount.referralCode}.`);
         }
 
-        function handleBarberAuthSubmit(e) {
+        async function handleBarberAuthSubmit(e) {
             e.preventDefault();
-            const name = document.getElementById('barber-auth-name').value.trim();
-            const code = document.getElementById('barber-auth-code').value.trim();
+            const email = document.getElementById('barber-auth-email').value.trim().toLowerCase();
+            const password = document.getElementById('barber-auth-password').value;
 
-            if (!name || code !== BARBER_ACCESS_CODE) {
-                showToast('Código de barbero incorrecto', 'error');
+            if (email !== BARBER_EMAIL) {
+                showToast('Esta cuenta no está autorizada como barbero.', 'error');
                 return;
             }
 
-            appState.currentUser = {
-                name: name,
-                phone: 'Barber VIP',
-                role: 'barbero',
-                isGuest: false
-            };
-            appState.currentRole = 'barbero';
+            try {
+                if (firebaseUserStateRef && firebaseAuth.currentUser) {
+                    await firebaseUserStateRef.set(appState);
+                    await mirrorUserAppointments(firebaseAuth.currentUser.uid, appState.appointments);
+                }
+                detachFirebaseUserStateListener();
+                detachFirebaseAppointmentsListeners();
+                const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+                if (credential.user.email?.toLowerCase() !== BARBER_EMAIL) {
+                    await firebaseAuth.signOut();
+                    showToast('Esta cuenta no está autorizada como barbero.', 'error');
+                    return;
+                }
+                await loadFirebaseBarberData(credential.user);
+            } catch (error) {
+                detachFirebaseUserStateListener();
+                detachFirebaseAppointmentsListeners();
+                showFirebaseAuthError(error);
+                return;
+            }
 
-            saveData();
             closeAuthModal();
             renderUserHeader();
             updateUI();
-            showToast(`¡Bienvenido, ${name}!`);
+            showToast(`¡Bienvenido, ${appState.currentUser.name}!`);
         }
 
-        function loginAsGuest() {
+        async function loginAsGuest() {
+            if (firebaseAuth.currentUser) {
+                try {
+                    if (firebaseUserStateRef) await firebaseUserStateRef.set(appState);
+                    detachFirebaseUserStateListener();
+                    detachFirebaseAppointmentsListeners();
+                    await firebaseAuth.signOut();
+                } catch (error) {
+                    showFirebaseAuthError(error);
+                    return;
+                }
+            }
             const referralInput = document.getElementById('client-referral-code');
             if (referralInput) referralInput.value = '';
             appState.currentUser = {
@@ -1351,13 +1617,27 @@
 
         async function logout() {
             try {
+                if (firebaseUserStateRef && firebaseAuth.currentUser) {
+                    await firebaseUserStateRef.set(appState);
+                    await mirrorUserAppointments(firebaseAuth.currentUser.uid, appState.appointments);
+                } else if (appState.currentUser?.role === 'barbero' && firebaseAuth.currentUser) {
+                    const updates = {};
+                    (appState.appointments || []).forEach(appointment => {
+                        if (appointment.clientUid && appointment.id) {
+                            updates[`${appointment.clientUid}/${appointment.id}`] = appointment;
+                        }
+                    });
+                    await firebaseDatabase.ref('barberAppointments').update(updates);
+                }
+                detachFirebaseUserStateListener();
+                detachFirebaseAppointmentsListeners();
                 await firebaseAuth.signOut();
             } catch (error) {
                 showFirebaseAuthError(error);
                 return;
             }
-            appState.currentUser = null;
-            saveData();
+            appState = { ...DEFAULT_STATE, currentUser: null, currentRole: 'cliente' };
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
             openAuthModal();
         }
 
@@ -1438,9 +1718,9 @@
         document.getElementById('client-auth-phone')?.addEventListener('input', updateReferralCodeAvailability);
         document.getElementById('client-auth-phone')?.addEventListener('change', updateReferralCodeAvailability);
 
-        document.getElementById('toggle-barber-code')?.addEventListener('click', () => {
-            const input = document.getElementById('barber-auth-code');
-            const button = document.getElementById('toggle-barber-code');
+        document.getElementById('toggle-barber-password')?.addEventListener('click', () => {
+            const input = document.getElementById('barber-auth-password');
+            const button = document.getElementById('toggle-barber-password');
             const icon = button.querySelector('i');
 
             if (!input || !button || !icon) return;
@@ -1449,7 +1729,7 @@
             input.type = isPassword ? 'text' : 'password';
             icon.classList.toggle('fa-eye', !isPassword);
             icon.classList.toggle('fa-eye-slash', isPassword);
-            button.setAttribute('aria-label', isPassword ? 'Ocultar código de acceso' : 'Mostrar código de acceso');
+            button.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
         });
 
         function switchTab(tabId) {
