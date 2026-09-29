@@ -476,10 +476,10 @@
 
                 <div class="glass-card rounded-2xl p-6 border border-gold-500/20">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-title text-xl font-bold text-white">Citas del día</h3>
-                        <span class="text-[10px] text-gray-400">Actualización en tiempo real</span>
+                        <h3 class="font-title text-xl font-bold text-white">Clientes y novedades</h3>
+                        <span class="text-[10px] text-gray-400">Agenda sincronizada en tiempo real</span>
                     </div>
-                    <div id="barber-dashboard-list" class="space-y-3"></div>
+                    <div id="barber-dashboard-list" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 items-start"></div>
                 </div>
 
                 <div class="glass-card rounded-2xl p-6 border border-gold-500/20">
@@ -1138,9 +1138,17 @@
 
         function mirrorUserAppointments(uid, appointments) {
             const appointmentsById = {};
+            const client = appState.currentUser?.role === 'cliente' ? appState.currentUser : null;
             (appointments || []).forEach(appointment => {
                 if (appointment?.id) {
-                    appointmentsById[appointment.id] = { ...appointment, clientUid: uid };
+                    appointmentsById[appointment.id] = {
+                        ...appointment,
+                        clientUid: uid,
+                        clientName: client?.name || appointment.clientName || '',
+                        clientPhone: client?.phone || appointment.clientPhone || '',
+                        clientPoints: Number(appState.points ?? appointment.clientPoints ?? 0),
+                        clientReferralCode: client?.referralCode || appointment.clientReferralCode || ''
+                    };
                 }
             });
             return firebaseDatabase.ref(`barberAppointments/${uid}`).set(appointmentsById);
@@ -1258,9 +1266,7 @@
             appState.currentRole = 'cliente';
 
             await userRef.set(appState);
-            if (!appointmentsSnapshot.exists()) {
-                await mirrorUserAppointments(user.uid, appState.appointments);
-            }
+            await mirrorUserAppointments(user.uid, appState.appointments);
             localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
             attachFirebaseUserStateListener(user, userRef);
             attachFirebaseUserAppointmentsListener(user);
@@ -2000,7 +2006,8 @@
             if (dashboardTotal) dashboardTotal.textContent = appointments.length;
             if (dashboardPending) dashboardPending.textContent = pendingCount;
             if (dashboardDone) dashboardDone.textContent = doneCount;
-            if (dashboardClient) dashboardClient.textContent = appointments.length > 0 ? '1' : '0';
+            const clientCount = new Set(appointments.map(appointment => appointment.clientUid || appointment.clientPhone || appointment.clientName).filter(Boolean)).size;
+            if (dashboardClient) dashboardClient.textContent = clientCount;
             if (totalIncome) totalIncome.textContent = `$${totalPrice.toLocaleString('es-AR')}`;
             if (avgValuation) avgValuation.textContent = `${avgVal}/5`;
             if (clientScore) clientScore.textContent = `${avgClientScore}/100`;
@@ -2044,6 +2051,72 @@
                 </div>
             `;
 
+            const appointmentsByClient = new Map();
+            appointments.forEach((appointment, index) => {
+                const clientKey = appointment.clientUid || appointment.clientPhone || appointment.clientName || `appointment-${index}`;
+                if (!appointmentsByClient.has(clientKey)) appointmentsByClient.set(clientKey, []);
+                appointmentsByClient.get(clientKey).push(appointment);
+            });
+
+            const renderClientColumn = (clientAppointments) => {
+                const client = clientAppointments[0];
+                const clientName = client.clientName || (client.clientUid ? `Cliente ${client.clientUid.slice(-6)}` : 'Cliente sin identificar');
+                const clientPhone = client.clientPhone || 'Teléfono no disponible';
+                const clientPoints = Number(client.clientPoints || 0);
+
+                return `
+                    <article class="glass-card rounded-xl border border-gold-500/25 p-4 min-w-0">
+                        <header class="border-b border-gold-500/20 pb-3">
+                            <div class="text-[10px] uppercase tracking-[0.14em] text-gold-400 font-bold">Cliente</div>
+                            <h4 class="text-lg font-bold text-white mt-1 break-words">${escapeHtml(clientName)}</h4>
+                            <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
+                                <div class="min-w-0">
+                                    <div class="text-[10px] uppercase text-gray-400">Teléfono</div>
+                                    <div class="text-gray-200 mt-1 break-words">${escapeHtml(clientPhone)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] uppercase text-gray-400">Puntos VIP</div>
+                                    <div class="text-gold-300 font-bold mt-1">${clientPoints}</div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] uppercase text-gray-400">Citas</div>
+                                    <div class="text-white font-bold mt-1">${clientAppointments.length}</div>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="text-[10px] uppercase text-gray-400">Código VIP</div>
+                                    <div class="text-gray-200 mt-1 break-words">${escapeHtml(client.clientReferralCode || 'Sin código')}</div>
+                                </div>
+                            </div>
+                        </header>
+                        <div class="divide-y divide-white/10 mt-3">
+                            ${clientAppointments.map(appointment => `
+                                <section class="py-3 first:pt-0 last:pb-0">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div class="text-[10px] uppercase text-gold-400">${escapeHtml(formatDateDisplay(appointment.date))}</div>
+                                            <div class="text-sm font-bold text-white mt-1">${escapeHtml(formatTime24Hour(appointment.time))}</div>
+                                        </div>
+                                        <span class="text-[9px] font-bold uppercase px-2 py-1 rounded-full ${appointment.status === 'Atendida' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gold-500/15 text-gold-300'}">${escapeHtml(appointment.status || 'Confirmada')}</span>
+                                    </div>
+                                    <div class="text-sm font-semibold text-gray-100 mt-3">${escapeHtml(appointment.service || 'Servicio no especificado')}</div>
+                                    <div class="text-[11px] text-gray-400 mt-1">Barbero: ${escapeHtml(appointment.barber || 'Sin asignar')}</div>
+                                    <div class="grid grid-cols-2 gap-2 mt-3 text-[10px]">
+                                        <div><span class="text-gray-400">Precio:</span> <span class="text-gold-300 font-bold">$${Number(appointment.price || 0).toLocaleString('es-AR')}</span></div>
+                                        <div><span class="text-gray-400">Trabajo:</span> <span class="text-white">${escapeHtml(appointment.workStatus || 'Pendiente')}</span></div>
+                                        <div><span class="text-gray-400">Valoración:</span> <span class="text-emerald-300">${Number(appointment.valuation || 0).toFixed(1)}/5</span></div>
+                                        <div><span class="text-gray-400">Puntaje:</span> <span class="text-white">${Number(appointment.clientScore || 0)}/100</span></div>
+                                    </div>
+                                    ${appointment.notes ? `<p class="text-[11px] text-gray-300 mt-3"><span class="text-gold-300 font-semibold">Novedad:</span> ${escapeHtml(appointment.notes)}</p>` : '<p class="text-[11px] text-gray-500 mt-3">Sin novedades anotadas.</p>'}
+                                    <button onclick="toggleAppointmentStatus('${appointment.id}')" class="barber-lamp-button mt-3 w-full px-2 py-2 rounded-lg border ${appointment.status === 'Atendida' ? 'border-gold-500/30 bg-gold-500/10 text-gold-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'} text-[10px] font-bold uppercase tracking-[0.12em] transition">
+                                        ${appointment.status === 'Atendida' ? 'Reabrir cita' : 'Marcar atendida'}
+                                    </button>
+                                </section>
+                            `).join('')}
+                        </div>
+                    </article>
+                `;
+            };
+
             if (list) {
                 if (appointments.length === 0) {
                     list.innerHTML = `
@@ -2060,11 +2133,11 @@
                 if (appointments.length === 0) {
                     dashboardList.innerHTML = `
                         <div class="rounded-xl border border-dashed border-gold-500/30 bg-onyx-900/40 p-3 text-center text-xs text-gray-400">
-                            No hay citas programadas para hoy.
+                            Todavía no hay clientes ni citas para mostrar.
                         </div>
                     `;
                 } else {
-                    dashboardList.innerHTML = appointments.map(renderAppointmentCard).join('');
+                    dashboardList.innerHTML = [...appointmentsByClient.values()].map(renderClientColumn).join('');
                 }
             }
 
