@@ -150,6 +150,10 @@
             box-shadow: 0 4px 12px rgba(176, 130, 24, 0.22);
         }
 
+        .logout-button {
+            min-height: 44px;
+        }
+
         .barber-lamp-button {
             position: relative;
             isolation: isolate;
@@ -1733,8 +1737,9 @@
                     </div>
                     <div class="text-[10px] text-gray-400">${roleLabel} • ${appState.points} Pts VIP</div>
                 </div>
-                <button onclick="logout()" title="Cerrar Sesión" class="text-gray-400 hover:text-red-400 ml-2 transition">
-                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                <button onclick="logout()" title="Cerrar sesión" aria-label="Cerrar sesión" class="logout-button barber-lamp-button inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-red-400/40 bg-red-500/10 py-2 pl-5 pr-3 text-xs font-bold text-red-200 transition hover:border-red-300/60 hover:bg-red-500/20 hover:text-white">
+                    <i class="fa-solid fa-right-from-bracket text-sm"></i>
+                    <span>Cerrar sesión</span>
                 </button>
             `;
         }
