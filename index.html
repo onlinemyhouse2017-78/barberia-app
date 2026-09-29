@@ -292,6 +292,10 @@
       transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
     }
 
+        #toast-container {
+            z-index: 10000;
+        }
+
         .haircut-book {
             background: linear-gradient(135deg, rgba(246, 211, 101, 0.10), rgba(17, 24, 39, 0.92) 38%, rgba(17, 24, 39, 0.98));
             border: 1px solid rgba(242, 201, 76, 0.28);
@@ -375,11 +379,7 @@
         }
   </style>
 </head>
-<body class="p-3 md:p-6 text-slate-100 flex flex-col items-center justify-center min-h-screen relative overflow-x-hidden">
-        }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col justify-between relative selection:bg-gold-500 selection:text-black">
+<body class="p-3 md:p-6 text-slate-100 flex flex-col items-center justify-center min-h-screen relative overflow-x-hidden selection:bg-gold-500 selection:text-black">
 
     <!-- Background Floating Decorative Barber Tools -->
     <i class="fa-solid fa-scissors floating-tool text-8xl text-gold-400 top-16 left-10" style="animation-delay: 0s;"></i>
@@ -419,6 +419,7 @@
             <div id="user-profile-header" class="flex items-center gap-3 bg-onyx-800/80 px-4 py-2 rounded-xl border border-gold-500/20">
                 <!-- Dynamic Content JS -->
             </div>
+            <a id="panel-route-link" href="barbero.html" target="_top" class="text-xs text-gold-300 font-bold hover:text-gold-100 underline underline-offset-4">Acceso Barbero</a>
         </header>
 
         <!-- NAVIGATION BAR -->
@@ -838,9 +839,10 @@
                 </div>
                 <h2 class="font-title text-2xl font-bold text-white">Acceso Barber VIP</h2>
                 <p class="text-xs text-slate-200 mt-1">Selecciona tu perfil para entrar</p>
+                <a id="auth-panel-route-link" href="index.html" target="_top" class="inline-block mt-3 text-xs text-gold-300 underline underline-offset-4">Ir al panel de clientes</a>
             </div>
 
-            <div class="grid grid-cols-2 gap-2 mb-5">
+            <div id="auth-role-selector" class="grid grid-cols-2 gap-2 mb-5">
                 <button type="button" class="auth-role-btn barber-lamp-button active" data-auth-role="cliente">Cliente</button>
                 <button type="button" class="auth-role-btn barber-lamp-button" data-auth-role="barbero">Barbero</button>
             </div>
@@ -938,6 +940,7 @@
         const APP_STORAGE_KEY = 'barber_app_state_v2';
         const APP_SYNC_CHANNEL = 'barber_app_sync_channel';
         const BARBER_EMAIL = 'onlinemyhouse2017@gmail.com';
+        const APP_PANEL = new URLSearchParams(window.location.search).get('panel') === 'barbero' ? 'barbero' : 'cliente';
         let clientAuthMode = 'register';
 
         const DEFAULT_STATE = {
@@ -1343,26 +1346,34 @@
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
+            configurePanelEntry();
             initializeSync();
             initializeHaircutBook();
 
             const firebaseUser = await getInitialFirebaseUser();
             if (firebaseUser) {
-                try {
-                    if (firebaseUser.email?.toLowerCase() === BARBER_EMAIL) {
-                        await loadFirebaseBarberData(firebaseUser);
-                    } else {
-                        await loadFirebaseUserData(firebaseUser);
-                    }
-                } catch (error) {
-                    console.error('Error restoring Firebase user data', error);
+                const isBarberAccount = firebaseUser.email?.toLowerCase() === BARBER_EMAIL;
+                if ((APP_PANEL === 'barbero') !== isBarberAccount) {
                     await firebaseAuth.signOut();
-                    appState = { ...DEFAULT_STATE, currentUser: null, currentRole: 'cliente' };
+                    appState = { ...DEFAULT_STATE, currentUser: null, currentRole: APP_PANEL };
                     localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
-                    showToast('No se pudieron cargar tus datos. Revisa las reglas de Firebase.', 'error');
+                } else {
+                    try {
+                        if (isBarberAccount) {
+                        await loadFirebaseBarberData(firebaseUser);
+                        } else {
+                            await loadFirebaseUserData(firebaseUser);
+                        }
+                    } catch (error) {
+                        console.error('Error restoring Firebase user data', error);
+                        await firebaseAuth.signOut();
+                        appState = { ...DEFAULT_STATE, currentUser: null, currentRole: APP_PANEL };
+                        localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
+                        showToast('No se pudieron cargar tus datos. Revisa las reglas de Firebase.', 'error');
+                    }
                 }
-            } else if (appState.currentUser && !appState.currentUser.isGuest) {
-                appState = { ...DEFAULT_STATE, currentUser: null, currentRole: 'cliente' };
+            } else if (appState.currentUser && (appState.currentUser.role !== APP_PANEL || !appState.currentUser.isGuest)) {
+                appState = { ...DEFAULT_STATE, currentUser: null, currentRole: APP_PANEL };
                 localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appState));
             }
 
@@ -1392,7 +1403,31 @@
             updateUI();
         });
 
+        function configurePanelEntry() {
+            const isBarberPanel = APP_PANEL === 'barbero';
+            const roleSelector = document.getElementById('auth-role-selector');
+            const routeLinks = [
+                document.getElementById('panel-route-link'),
+                document.getElementById('auth-panel-route-link')
+            ];
+            const authTitle = document.querySelector('#auth-modal h2');
+            const authDescription = document.querySelector('#auth-modal .text-center p');
+
+            document.title = isBarberPanel ? 'Panel Barbero | BarberApp' : 'BarberApp - Barbería VIP & Club de Puntos';
+            roleSelector?.classList.add('hidden');
+            document.querySelector('nav')?.classList.toggle('hidden', isBarberPanel);
+            routeLinks.forEach(link => {
+                if (!link) return;
+                link.href = isBarberPanel ? 'index.html' : 'barbero.html';
+                link.textContent = isBarberPanel ? 'Ir al panel de clientes' : '¿Eres barbero? Acceso al panel';
+            });
+            if (authTitle) authTitle.textContent = isBarberPanel ? 'Acceso Panel Barbero' : 'Acceso Barber VIP';
+            if (authDescription) authDescription.textContent = isBarberPanel ? 'Ingresa con tu cuenta autorizada' : 'Accede o crea tu cuenta de cliente';
+            toggleAuthForm(APP_PANEL);
+        }
+
         function openAuthModal() {
+            toggleAuthForm(APP_PANEL);
             document.getElementById('auth-modal').classList.remove('hidden');
         }
 
@@ -1426,13 +1461,22 @@
                 'auth/invalid-credential': 'Correo o contraseña incorrectos.',
                 'auth/user-not-found': 'No existe una cuenta con ese correo.',
                 'auth/wrong-password': 'Correo o contraseña incorrectos.',
-                'auth/too-many-requests': 'Demasiados intentos. Espera un momento y vuelve a probar.'
+                'auth/too-many-requests': 'Demasiados intentos. Espera un momento y vuelve a probar.',
+                'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión.',
+                'auth/operation-not-allowed': 'El acceso por correo y contraseña no está habilitado en Firebase.',
+                'auth/unauthorized-domain': 'Este dominio no está autorizado en Firebase Authentication.',
+                'auth/invalid-api-key': 'La clave API de Firebase no es válida para este proyecto.'
             };
-            showToast(messages[error.code] || 'No se pudo completar la autenticación. Revisa la conexión e inténtalo otra vez.', 'error');
+            console.error('Firebase authentication error:', error.code, error.message);
+            showToast(messages[error.code] || `No se pudo completar la autenticación${error.code ? ` (${error.code})` : ''}. Revisa la configuración de Firebase.`, 'error');
         }
 
         async function handleAuthSubmit(e) {
             e.preventDefault();
+            if (APP_PANEL !== 'cliente') {
+                showToast('Usa el acceso exclusivo para barberos.', 'error');
+                return;
+            }
             const email = document.getElementById('client-auth-email').value.trim().toLowerCase();
             const password = document.getElementById('client-auth-password').value;
             const name = document.getElementById('client-auth-name').value.trim();
@@ -1446,7 +1490,9 @@
                 try {
                     const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
                     if (credential.user.email?.toLowerCase() === BARBER_EMAIL) {
-                        await loadFirebaseBarberData(credential.user);
+                        await firebaseAuth.signOut();
+                        showToast('Esta cuenta debe ingresar desde la página de barberos.', 'error');
+                        return;
                     } else {
                         await loadFirebaseUserData(credential.user);
                     }
@@ -1552,6 +1598,10 @@
 
         async function handleBarberAuthSubmit(e) {
             e.preventDefault();
+            if (APP_PANEL !== 'barbero') {
+                showToast('Usa el acceso de clientes para esta página.', 'error');
+                return;
+            }
             const email = document.getElementById('barber-auth-email').value.trim().toLowerCase();
             const password = document.getElementById('barber-auth-password').value;
 
@@ -1560,13 +1610,20 @@
                 return;
             }
 
-            try {
-                if (firebaseUserStateRef && firebaseAuth.currentUser) {
+            if (firebaseUserStateRef && firebaseAuth.currentUser) {
+                try {
                     await firebaseUserStateRef.set(appState);
                     await mirrorUserAppointments(firebaseAuth.currentUser.uid, appState.appointments);
+                } catch (error) {
+                    console.error('Error preserving client data before barber login', error);
+                    showToast('No se pudieron sincronizar los datos anteriores; se intentará iniciar sesión de todos modos.', 'error');
                 }
-                detachFirebaseUserStateListener();
-                detachFirebaseAppointmentsListeners();
+            }
+
+            detachFirebaseUserStateListener();
+            detachFirebaseAppointmentsListeners();
+
+            try {
                 const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
                 if (credential.user.email?.toLowerCase() !== BARBER_EMAIL) {
                     await firebaseAuth.signOut();
@@ -2089,6 +2146,10 @@
 
             if (!appState.currentUser) {
                 navButtons.forEach(btn => btn.classList.remove('hidden'));
+            }
+
+            if (APP_PANEL === 'barbero') {
+                navButtons.forEach(btn => btn.classList.add('hidden'));
             }
 
             // 1. Points display
