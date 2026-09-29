@@ -154,6 +154,12 @@
             min-height: 44px;
         }
 
+        .client-referral-banner {
+            position: sticky;
+            top: 0.75rem;
+            z-index: 45;
+        }
+
         .barber-lamp-button {
             position: relative;
             isolation: isolate;
@@ -456,6 +462,23 @@
                 <span>Historial</span>
             </button>
         </nav>
+
+        <aside id="client-referral-banner" class="client-referral-banner hidden mb-5 rounded-xl border border-gold-400/60 bg-onyx-900/95 p-4 shadow-xl backdrop-blur-md">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="min-w-0">
+                    <div class="text-xs font-extrabold uppercase text-gold-300">Compartí tu código y sumá puntos</div>
+                    <p class="text-sm font-bold text-white mt-1">Compartir código: 10 puntos por cada nuevo cliente. Nuevo corte: +5 puntos extra. Sumá puntos para conseguir cortes gratis y descuentos.</p>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <span class="text-[10px] uppercase font-bold text-gray-400">Tu código</span>
+                        <code id="client-referral-banner-code" class="rounded-md border border-gold-400/50 bg-black/40 px-3 py-1.5 text-base font-extrabold text-gold-200">VIP-000000</code>
+                    </div>
+                </div>
+                <button type="button" onclick="shareReferralCode()" class="barber-lamp-button inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-gold-400 px-4 py-2 pl-6 text-sm font-extrabold text-onyx-900 transition hover:bg-gold-300">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span>Compartir código</span>
+                </button>
+            </div>
+        </aside>
 
         <!-- TAB CONTENT CONTAINER -->
         <main class="flex-1">
@@ -2086,6 +2109,26 @@
             });
         }
 
+        async function shareReferralCode() {
+            const code = appState.currentUser?.referralCode || appState.referralCode;
+            const shareData = {
+                title: 'Código de referido Barbería VIP',
+                text: `Compartí mi código ${code}: cada nuevo cliente suma 10 puntos y un nuevo corte suma 5 puntos extra. Acumulá para conseguir cortes gratis y descuentos.`
+            };
+
+            if (navigator.share) {
+                try {
+                    await navigator.share(shareData);
+                    showToast('¡Gracias por compartir tu código!');
+                    return;
+                } catch (error) {
+                    if (error.name === 'AbortError') return;
+                }
+            }
+
+            copyReferralCode();
+        }
+
         function renderBarberPanel() {
             const total = document.getElementById('barber-total-appointments');
             const pending = document.getElementById('barber-pending-appointments');
@@ -2355,6 +2398,14 @@
 
             if (APP_PANEL === 'barbero') {
                 navButtons.forEach(btn => btn.classList.add('hidden'));
+            }
+
+            const referralBanner = document.getElementById('client-referral-banner');
+            const referralBannerCode = document.getElementById('client-referral-banner-code');
+            const showReferralBanner = APP_PANEL === 'cliente' && isClient && !appState.currentUser.isGuest;
+            referralBanner?.classList.toggle('hidden', !showReferralBanner);
+            if (showReferralBanner && referralBannerCode) {
+                referralBannerCode.textContent = appState.currentUser.referralCode || appState.referralCode;
             }
 
             // 1. Points display
