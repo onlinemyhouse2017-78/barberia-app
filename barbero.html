@@ -3,24 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0b0c10">
-    <title>Panel Barbero | BarberApp</title>
-    <style>
-        html, body, iframe {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            border: 0;
-            display: block;
-        }
-
-        body {
-            min-height: 100vh;
-            overflow: hidden;
-        }
-    </style>
+    <meta http-equiv="refresh" content="0; url=index.html?panel=barbero">
+    <title>Abriendo el panel de barberos</title>
 </head>
 <body>
-    <iframe src="index.html?panel=barbero" title="Panel exclusivo para barberos"></iframe>
+    <p>Abriendo el panel de barberos...</p>
+    <p><a href="index.html?panel=barbero">Entrar al panel</a></p>
+    <script>
+        window.location.replace('index.html?panel=barbero');
+    </script>
 </body>
 </html>

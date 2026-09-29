@@ -1465,7 +1465,10 @@
                 'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión.',
                 'auth/operation-not-allowed': 'El acceso por correo y contraseña no está habilitado en Firebase.',
                 'auth/unauthorized-domain': 'Este dominio no está autorizado en Firebase Authentication.',
-                'auth/invalid-api-key': 'La clave API de Firebase no es válida para este proyecto.'
+                'auth/invalid-api-key': 'La clave API de Firebase no es válida para este proyecto.',
+                'PERMISSION_DENIED': 'Firebase rechazó el acceso a la base de datos. Hay que revisar las reglas de Realtime Database.',
+                'permission_denied': 'Firebase rechazó el acceso a la base de datos. Hay que revisar las reglas de Realtime Database.',
+                'database/permission-denied': 'Firebase rechazó el acceso a la base de datos. Hay que revisar las reglas de Realtime Database.'
             };
             console.error('Firebase authentication error:', error.code, error.message);
             showToast(messages[error.code] || `No se pudo completar la autenticación${error.code ? ` (${error.code})` : ''}. Revisa la configuración de Firebase.`, 'error');
